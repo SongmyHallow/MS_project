@@ -2,16 +2,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.neighbors import KNeighborsRegressor
  
- 
+# base test dataset 
 n_dots = 400
 X = 5 * np.random.rand(n_dots, 1)
 y = np.exp(X).ravel()
  
 #add noise
 y += 0.1 * np.random.rand(n_dots) - 0.1
-
 # plt.plot(X,y, 'r.')
 # plt.show()
+
 #KNN Regression
 k = 2
 knn = KNeighborsRegressor(k)
