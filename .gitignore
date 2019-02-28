@@ -1,5 +1,5 @@
-# text file
-.pdf
+# Ignore the Reference directory
+Reference/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
