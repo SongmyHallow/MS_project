@@ -1,5 +1,8 @@
 # Ignore the Reference directory
 Reference/
+problemdata/
+source_convexmodels/
+source_princetonlibgloballib/
 
 # Ignore vscode setting file
 .vscode/
