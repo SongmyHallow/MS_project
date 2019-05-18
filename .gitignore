@@ -4,7 +4,7 @@ dfo_results/
 Reference/
 problemdata/
 source_convexmodels/
-source_princetonlibgloballib/
+# source_princetonlibgloballib/
 
 # Ignore vscode setting file
 .vscode/
