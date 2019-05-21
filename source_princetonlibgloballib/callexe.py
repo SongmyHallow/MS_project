@@ -1,11 +1,14 @@
 import os
 import sys
 import re
-import argparse
+import matplotlib.pyplot as plt
+import random
+import numpy as np
 
 if __name__ == '__main__':
     compileFile = sys.argv[1]
     inputFile = sys.argv[2]
+    outputFile = sys.argv[3]
 
 # read .c file and match the line of for loop to get
 # the number of variables
@@ -21,22 +24,42 @@ def get_number(file):
             numOfVar = line_group2[1].strip()
     return int(numOfVar)
 
+# helper function to generate input value
+# input: index of line
+# output: (string) value
+def val_generate(index,loop):
+    return str(0.01/index*loop)
+
+
 # generate input.in file according to requested number of input values
 # output: input.in file
-def create_input(file,number):
+def create_input(file,number,loop):
     infile = open(file, 'w')
     for i in range(number):
-        infile.write(str(2*(i+1))+"\n")
+        infile.write(val_generate((i+1),loop)+"\n")
     infile.close()
 
-def main():
-    # get the number of variables
-    numOfVar = get_number(compileFile)
-    # compile .c file
-    os.system('gcc '+compileFile+'.c -o '+compileFile)
-    # create input.in file
-    create_input(inputFile, numOfVar)
-    # run executable file
-    os.system('.\\'+compileFile)
+def read_output(file,lst):
+    readfile = open(file, 'r')
+    for line in readfile.readlines():
+        lst.append(float(line.strip()))
+    readfile.close()
 
-main()
+# get the number of variables
+numOfVar = get_number(compileFile)
+# compile .c file
+os.system('gcc '+compileFile+'.c -o '+compileFile)
+
+# Use loop to repeatedly call executable file
+# infile = open(inputFile, 'a')
+outlst = []
+for i in range(1000):
+    create_input(inputFile, numOfVar, i)
+    os.system('.\\'+compileFile)
+    read_output(outputFile, outlst)
+print(outlst)
+
+xdata = [i for i in range(len(outlst))]
+plt.plot(xdata,outlst)
+plt.show()
+
