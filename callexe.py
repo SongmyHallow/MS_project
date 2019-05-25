@@ -9,6 +9,7 @@ if __name__ == '__main__':
     compileFile = sys.argv[1]
     inputFile = sys.argv[2]
     outputFile = sys.argv[3]
+    dataFile = sys.argv[4]
 
 # read .c file and match the line of for loop to get the number of variables
 # input: name of input file
@@ -68,9 +69,6 @@ def repeat_call(infile,compilefile,outfile,number,loop):
     # print(outlst)
     return outlst,inlst
 
-# read data file to get values of number of vars, boundaries nad starting points
-# input: data file name
-# output: attributes
 def read_datafile(file):
     numOfVar = []
     lowBound = []
@@ -109,5 +107,7 @@ os.system('gcc '+compileFile+'.c -o '+compileFile)
 # infile = open(inputFile, 'a')
 ydata,input_values = repeat_call(inputFile,compileFile,outputFile,numOfVar,1000)
 xdata = [i for i in range(len(ydata))]
-plt.plot(xdata,ydata)
-plt.show()
+# plt.plot(xdata,ydata)
+# plt.show()
+
+read_datafile(dataFile)

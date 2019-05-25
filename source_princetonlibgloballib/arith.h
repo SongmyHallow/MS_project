@@ -3,6 +3,12 @@
 
 #include "config.h"
 #include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#define asl cur_ASL
+#include <errno.h>
+#include <setjmp.h>
 
 #ifdef _MSC_VER
 #define isnan _isnan
@@ -37,3 +43,39 @@ static inline int isinf_ld (long double x)
 #endif
 
 #endif
+
+
+#ifndef real
+#define real double
+#endif
+
+ void
+#ifdef KR_headers
+in_trouble(who, a) char *who; real a;
+#else
+in_trouble(char *who, real a)
+#endif
+{
+	char buf[64];
+	// if (err_jmp)
+	// 	longjmp(err_jmp->jb, errno ? errno : 1);
+	sprintf(buf, "can't evaluate %s(%g)", who, a);
+	perror(buf);
+	exit(1);
+	}
+
+ void
+#ifdef KR_headers
+in_trouble2(who, a, b) char *who; real a, b;
+#else
+in_trouble2(char *who, real a, real b)
+#endif
+{
+	char buf[64];
+	// if (err_jmp)
+	// 	longjmp(err_jmp->jb, errno ? errno : 1);
+	sprintf(buf, "can't evaluate %s(%g,%g)", who, a, b);
+	perror(buf);
+	exit(1);
+	}
+
