@@ -5,51 +5,40 @@ import matplotlib.pyplot as plt
 import random
 import numpy as np
 
-if __name__ == '__main__':
-    compileFile = sys.argv[1]
-    inputFile = sys.argv[2]
-    outputFile = sys.argv[3]
-    dataFile = sys.argv[4]
-
-# read .c file and match the line of for loop to get the number of variables
-# input: name of input file
-# output: (integer) number of variables
-def get_number(file):
-    numOfVar = -1
-    infile = open(file+'.c','r')
-    for line in infile.readlines():
-        matchObj = re.match(r'for',line,re.M|re.I)
-        if matchObj:
-            line_group1 = line.split(';')
-            line_group2 = line_group1[1].split('<')
-            numOfVar = line_group2[1].strip()
-    return int(numOfVar)
+# compile .c file
+def compileSource(file):
+    os.system('gcc source_princetonlibgloballib/'+file+'.c -lm -o outfiles/'+file+'/'+file)
 
 # helper function to generate input value
 # input: index of line
 # output: (string) value
-def val_generate(index,loop):
-    return str(0.01/index*loop)
+def val_generate(boundary):
+    lb, ub = boundary
+    val = random.uniform(lb,ub)
+    return str(val)
 
 # generate input.in file according to requested number of input values
 # output: input.in file
-def create_input(file,number,loop):
-    infile = open(file, 'w')
-    for i in range(number):
-        infile.write(val_generate((i+1),loop)+"\n")
+def create_input(file,lb,ub,compilefile):
+    infile = open('outfiles/'+compilefile+'/'+file, 'w')
+    for i in zip(lb,ub):
+        infile.write(val_generate(i)+"\n")
     infile.close()
 
 # read returned value from file
 # input: input file, name of list
-def read_output(file,lst):
+def read_output(file,lst,compilefile):
     readfile = open(file, 'r')
+    outfile = open('outfiles/'+compilefile+'/'+file,'w')
     for line in readfile.readlines():
         lst.append(float(line.strip()))
+        outfile.write(line)
     readfile.close()
+    outfile.close()
 
-def read_input(file,lst):
+def read_input(file,lst,compilefile):
     temp = []
-    readfile = open(file,'r')
+    readfile = open('outfiles/'+compilefile+'/'+file,'r')
     for line in readfile.readlines():
         temp.append(float(line.strip()))
     readfile.close()
@@ -58,19 +47,21 @@ def read_input(file,lst):
 # call the executable file repeatedly and generate the plot
 # input: input file name, number of variables, number of loops
 # output: returned values list
-def repeat_call(infile,compilefile,outfile,number,loop):
+def repeat_call(infile,compilefile,outfile,lb,ub,loop):
     outlst = []
     inlst = []
     for i in range(loop):
-        create_input(infile, number, i)
-        os.system('.\\'+compilefile)
-        read_output(outfile,outlst)
-        read_input(infile,inlst)
-    # print(outlst)
+        create_input(infile,lb,ub,compilefile)
+        os.system('./outfiles/'+compilefile+'/'+compilefile)
+        read_output(outfile,outlst,compilefile)
+        read_input(infile,inlst,compilefile)
     return outlst,inlst
 
+# read data file to get values of number of vars, boundaries nad starting points
+# input: data file name
+# output: attributes
 def read_datafile(file):
-    numOfVar = []
+    numOfVar = 0
     lowBound = []
     upBound = []
     startPoint = []
@@ -79,7 +70,7 @@ def read_datafile(file):
     lines = infile.readlines()
     # The first line
     for num in lines[0].split():
-        numOfVar.append(int(num.strip()))
+        numOfVar = int(num.strip())
     # The second line
     for i in lines[1].split():
         lowBound.append(float(i.strip()))
@@ -90,7 +81,6 @@ def read_datafile(file):
     for k in lines[3].split():
         startPoint.append(float(k.strip()))
     infile.close()
-    print(numOfVar,lowBound,upBound,startPoint)
     return numOfVar,lowBound,upBound,startPoint
 
 #***************************************************************
@@ -98,16 +88,23 @@ def read_datafile(file):
 # command line: python .py c_code_filename input.in output.out
 #***************************************************************
 
-# get the number of variables
-numOfVar = get_number(compileFile)
-# compile .c file
-os.system('gcc '+compileFile+'.c -o '+compileFile)
+if __name__ == '__main__':
+    compileFile = sys.argv[1]
+    dataFile = sys.argv[2]
+    inputFile = sys.argv[3]
+    outputFile = sys.argv[4]
 
-# Use loop to repeatedly call executable file
-# infile = open(inputFile, 'a')
-ydata,input_values = repeat_call(inputFile,compileFile,outputFile,numOfVar,1000)
-xdata = [i for i in range(len(ydata))]
-# plt.plot(xdata,ydata)
-# plt.show()
+def main():
+    # os.system("mkdir outfiles/"+compileFile)
+    compileSource(compileFile)
+    numOfVar, lb, ub, sp = read_datafile(dataFile)
+    print(numOfVar, lb, ub, sp)
+    ydata,in_values = repeat_call(inputFile, compileFile, outputFile, lb, ub, 10)
+    print(ydata,in_values)
 
-read_datafile(dataFile)
+
+main()
+# testFile = open('DataFileName.txt','r')
+# for line in testFile.readlines():
+#     print(line)
+
