@@ -7,7 +7,7 @@ import numpy as np
 
 # compile .c file
 def compileSource(file):
-    os.system('gcc source_princetonlibgloballib/'+file+'.c -lm -o outfiles/'+file+'/'+file)
+    os.system('gcc source_princetonlibgloballib/'+file+'.c -lm -o '+file)
 
 # helper function to generate input value
 # input: index of line
@@ -20,7 +20,7 @@ def val_generate(boundary):
 # generate input.in file according to requested number of input values
 # output: input.in file
 def create_input(file,lb,ub,compilefile):
-    infile = open('outfiles/'+compilefile+'/'+file, 'w')
+    infile = open(file, 'w')
     for i in zip(lb,ub):
         infile.write(val_generate(i)+"\n")
     infile.close()
@@ -29,16 +29,16 @@ def create_input(file,lb,ub,compilefile):
 # input: input file, name of list
 def read_output(file,lst,compilefile):
     readfile = open(file, 'r')
-    outfile = open('outfiles/'+compilefile+'/'+file,'w')
+    # outfile = open(file,'w')
     for line in readfile.readlines():
         lst.append(float(line.strip()))
-        outfile.write(line)
+        # outfile.write(line)
     readfile.close()
-    outfile.close()
+    # outfile.close()
 
 def read_input(file,lst,compilefile):
     temp = []
-    readfile = open('outfiles/'+compilefile+'/'+file,'r')
+    readfile = open(file,'r')
     for line in readfile.readlines():
         temp.append(float(line.strip()))
     readfile.close()
@@ -52,7 +52,7 @@ def repeat_call(infile,compilefile,outfile,lb,ub,loop):
     inlst = []
     for i in range(loop):
         create_input(infile,lb,ub,compilefile)
-        os.system('./outfiles/'+compilefile+'/'+compilefile)
+        os.system('./'+compilefile)
         read_output(outfile,outlst,compilefile)
         read_input(infile,inlst,compilefile)
     return outlst,inlst
@@ -104,7 +104,5 @@ def main():
 
 
 main()
-# testFile = open('DataFileName.txt','r')
-# for line in testFile.readlines():
-#     print(line)
+
 
