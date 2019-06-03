@@ -4,25 +4,38 @@ import re
 import matplotlib.pyplot as plt
 import random
 import numpy as np
+from SALib.sample import saltelli
+from SALib.util import read_param_file
 
 # compile .c file
 def compileSource(file):
     os.system('gcc source_princetonlibgloballib/'+file+'.c -lm -o '+file)
 
 # helper function to generate input value
-# input: index of line
-# output: (string) value
-def val_generate(boundary):
-    lb, ub = boundary
-    val = random.uniform(lb,ub)
-    return str(val)
+def val_generate(lb,ub,numofvar):
+    bound_lst = []
+    name_lst = []
+    index = 1
+    for l, u in zip(lb,ub):
+        bound_lst.append([l,u])
+        name_lst.append('x'+str(index))
+        index = index+1
+    problem = {
+        'num_vars': numofvar,
+        'names': name_lst,
+        'bounds': bound_lst
+    }
+    param_values = saltelli.sample(problem,20)
+    np.savetxt("param_values.txt", param_values)
+    return param_values
+
 
 # generate input.in file according to requested number of input values
 # output: input.in file
-def create_input(file,lb,ub,compilefile):
+def create_input(file,values):
     infile = open(file, 'w')
-    for i in zip(lb,ub):
-        infile.write(val_generate(i)+"\n")
+    for val in values:
+        infile.write(str(val)+'\n')
     infile.close()
 
 # read returned value from file
@@ -47,11 +60,12 @@ def read_input(file,lst,compilefile):
 # call the executable file repeatedly and generate the plot
 # input: input file name, number of variables, number of loops
 # output: returned values list
-def repeat_call(infile,compilefile,outfile,lb,ub,loop):
+def repeat_call(infile,compilefile,outfile,lb,ub,loop,numofvar):
+    input_values = val_generate(lb,ub,numofvar)
     outlst = []
     inlst = []
-    for i in range(loop):
-        create_input(infile,lb,ub,compilefile)
+    for i in range(len(input_values)):
+        create_input(infile,input_values[i])
         os.system('./'+compilefile)
         read_output(outfile,outlst,compilefile)
         read_input(infile,inlst,compilefile)
@@ -99,8 +113,9 @@ def main():
     compileSource(compileFile)
     numOfVar, lb, ub, sp = read_datafile(dataFile)
     print(numOfVar, lb, ub, sp)
-    ydata,in_values = repeat_call(inputFile, compileFile, outputFile, lb, ub, 10)
+    ydata,in_values = repeat_call(inputFile, compileFile, outputFile, lb, ub, 10, numOfVar)
     print(ydata,in_values)
+
 
 
 main()

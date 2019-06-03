@@ -1,7 +1,9 @@
 from SALib.sample import saltelli
 from SALib.analyze import sobol
 from SALib.test_functions import Ishigami
+from SALib.util import read_param_file
 import numpy as np
+
 problem = {
   'num_vars': 3,
   'names': ['x1', 'x2', 'x3'],
@@ -18,4 +20,11 @@ Y = Ishigami.evaluate(param_values)
 Si = sobol.analyze(problem, Y, print_to_console=True)
 # Returns a dictionary with keys 'S1', 'S1_conf', 'ST', and 'ST_conf'
 # (first and total-order indices with bootstrap confidence intervals)
-print(param_values.shape)
+problem2 = read_param_file('SALib_bound.txt')
+param_values2 = saltelli.sample(problem2, 20)
+# print(param_values.shape)
+# print(Y)
+# print(Si)
+for i,x in enumerate(param_values2):
+  print(x)
+print([[-np.pi, np.pi]]*3)
