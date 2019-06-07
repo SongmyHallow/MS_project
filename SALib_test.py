@@ -4,6 +4,15 @@ from SALib.test_functions import Ishigami
 from SALib.util import read_param_file
 import numpy as np
 
+def transpose(matrix):
+        new_matrix = []
+        for i in range(len(matrix[0])):
+            matrix1 = []
+            for j in range(len(matrix)):
+                matrix1.append(matrix[j][i])
+            new_matrix.append(matrix1)
+        return new_matrix
+
 problem = {
   'num_vars': 3,
   'names': ['x1', 'x2', 'x3'],
@@ -27,4 +36,5 @@ param_values2 = saltelli.sample(problem2, 20)
 # print(Si)
 for i,x in enumerate(param_values2):
   print(x)
-print([[-np.pi, np.pi]]*3)
+a = [[-np.pi, np.pi]]*3
+print(transpose(a))
