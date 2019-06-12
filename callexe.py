@@ -24,7 +24,7 @@ from sympy import symbols, lambdify
 def compileSource(file):
     os.system('gcc source_princetonlibgloballib/'+file+'.c -lm -o '+file)
 
-# helper function to generate input value
+# helper function to generate input value with sobel sequence
 def val_generate(lb,ub,numofvar):
     bound_lst = []
     name_lst = []
@@ -38,13 +38,12 @@ def val_generate(lb,ub,numofvar):
         'names': name_lst,
         'bounds': bound_lst
     }
-    param_values = saltelli.sample(problem,5)
+    param_values = saltelli.sample(problem,15)
     # np.savetxt("param_values.txt", param_values)
     return param_values,problem
 
 
 # generate input.in file according to requested number of input values
-# output: input.in file
 def create_input(file,values):
     infile = open(file, 'w')
     for val in values:
@@ -52,7 +51,6 @@ def create_input(file,values):
     infile.close()
 
 # read returned value from file
-# input: input file, name of list
 def read_output(file,lst,compilefile):
     readfile = open(file, 'r')
     # outfile = open(file,'w')
@@ -70,7 +68,7 @@ def read_input(file,lst,compilefile):
     readfile.close()
     lst.append(temp)
 
-# call the executable file repeatedly and generate the plot
+# call the executable file repeatedly
 # input: input file name, number of variables, number of loops
 # output: returned values list
 def repeat_call(infile,compilefile,outfile,lb,ub,loop,numofvar):
@@ -128,6 +126,8 @@ def generate_dataframe(input_values,problem,ydata):
     new_dic['Y'] = ydata
     return new_dic
 
+# use models defined in scikit-learn package to do prediction
+# an image(test value vs predicted value) can be generated
 def try_different_method(model,x_train,y_train,x_test,y_test,pic_name):
     model.fit(x_train,y_train)
     score = model.score(x_test, y_test)
@@ -141,7 +141,7 @@ def try_different_method(model,x_train,y_train,x_test,y_test,pic_name):
 
 #***************************************************************
 # The following is the main function
-# command line: python .py c_code_filename input.in output.out
+# command line: python callexe.py filename problemdata/filename.problem.data input.in output.out
 #***************************************************************
 
 if __name__ == '__main__':
@@ -168,8 +168,8 @@ def main():
     # print(y_train)
 
     # TODO:decision tree model
-    # model_DecisionTreeRegressor = tree.DecisionTreeRegressor()
-    # try_different_method(model_DecisionTreeRegressor,X_train,y_train,X_test,y_test,'Decision-tree')
+    model_DecisionTreeRegressor = tree.DecisionTreeRegressor()
+    try_different_method(model_DecisionTreeRegressor,X_train,y_train,X_test,y_test,'Decision-tree')
 
     # TODO:linear regression
     # model_LinearRegression = linear_model.LinearRegression()
@@ -196,8 +196,8 @@ def main():
     # try_different_method(model_BaggingRegressor,X_train,y_train,X_test,y_test,'Bagging')
 
     # TODO:Extra tree regression
-    model_ExtraTreeRegressor = ExtraTreesRegressor(n_estimators=100)
-    try_different_method(model_ExtraTreeRegressor,X_train,y_train,X_test,y_test,'Extra-tree')
+    # model_ExtraTreeRegressor = ExtraTreesRegressor(n_estimators=100)
+    # try_different_method(model_ExtraTreeRegressor,X_train,y_train,X_test,y_test,'Extra-tree')
 
 main()
 
