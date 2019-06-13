@@ -19,7 +19,6 @@ import sympy
 from scipy.stats import t, ttest_1samp
 from sympy.parsing.sympy_parser import parse_expr
 from sympy import symbols, lambdify
-
 # compile .c file
 def compileSource(file):
     os.system('gcc source_princetonlibgloballib/'+file+'.c -lm -o '+file)
@@ -38,7 +37,7 @@ def val_generate(lb,ub,numofvar):
         'names': name_lst,
         'bounds': bound_lst
     }
-    param_values = saltelli.sample(problem,15)
+    param_values = saltelli.sample(problem,2)
     # np.savetxt("param_values.txt", param_values)
     return param_values,problem
 
@@ -73,6 +72,7 @@ def read_input(file,lst,compilefile):
 # output: returned values list
 def repeat_call(infile,compilefile,outfile,lb,ub,loop,numofvar):
     input_values,problem = val_generate(lb,ub,numofvar)
+    input_values = transpose(input_values)
     outlst = []
     inlst = []
     for i in range(len(input_values)):
@@ -80,7 +80,7 @@ def repeat_call(infile,compilefile,outfile,lb,ub,loop,numofvar):
         os.system('./'+compilefile)
         read_output(outfile,outlst,compilefile)
         read_input(infile,inlst,compilefile)
-    return outlst,inlst,problem
+    return outlst,inlst
 
 # read data file to get values of number of vars, boundaries nad starting points
 # input: data file name
@@ -133,11 +133,14 @@ def try_different_method(model,x_train,y_train,x_test,y_test,pic_name):
     score = model.score(x_test, y_test)
     result = model.predict(x_test)
     plt.figure()
-    plt.plot(np.arange(len(result)), y_test,'go-',label='true value')
-    plt.plot(np.arange(len(result)),result,'ro-',label='predict value')
+    # plt.plot(np.arange(len(result)), y_test,'go-',label='true value')
+    # plt.plot(np.arange(len(result)),result,'ro-',label='predict value')
+    plt.plot(result, y_test,'ko',label=pic_name)
+    plt.xlabel('tabulated data')
+    plt.ylabel('experimental data')
     plt.title('score: %f'%score)
     plt.legend()
-    plt.savefig(pic_name+'.png')
+    plt.savefig(pic_name+'-parityplot.png')
 
 #***************************************************************
 # The following is the main function
@@ -154,22 +157,24 @@ def main():
     # os.system("mkdir outfiles/"+compileFile)
     compileSource(compileFile)
     numOfVar, lb, ub, sp = read_datafile(dataFile)
-    ydata,in_values,problem = repeat_call(inputFile, compileFile, outputFile, lb, ub, 10, numOfVar)
-    test = generate_dataframe(in_values,problem,ydata)
-    name_lst = problem['names'].append('Y')
-    df = DataFrame(test,columns=name_lst)
-    plt.scatter(df['x2'], df['Y'], color='red')
-    plt.xlabel('x2', fontsize=14)
-    plt.ylabel('Y_value', fontsize=14)
-    plt.grid(True)
-    plt.savefig('test.png')
+    ydata,in_values = repeat_call(inputFile, compileFile, outputFile, lb, ub, 10, numOfVar)
+
+    # print(in_values)
+    # test = generate_dataframe(in_values,problem,ydata)
+    # name_lst = problem['names'].append('Y')
+    # df = DataFrame(test,columns=name_lst)
+    # plt.scatter(df['x2'], df['Y'], color='red')
+    # plt.xlabel('x2', fontsize=14)
+    # plt.ylabel('Y_value', fontsize=14)
+    # plt.grid(True)
+    # plt.savefig('test.png')
 
     X_train,X_test,y_train,y_test=train_test_split(in_values,ydata,test_size=0.25)
     # print(y_train)
 
     # TODO:decision tree model
-    model_DecisionTreeRegressor = tree.DecisionTreeRegressor()
-    try_different_method(model_DecisionTreeRegressor,X_train,y_train,X_test,y_test,'Decision-tree')
+    # model_DecisionTreeRegressor = tree.DecisionTreeRegressor()
+    # try_different_method(model_DecisionTreeRegressor,X_train,y_train,X_test,y_test,'Decision-tree')
 
     # TODO:linear regression
     # model_LinearRegression = linear_model.LinearRegression()
@@ -180,8 +185,8 @@ def main():
     # try_different_method(model_SVR,X_train,y_train,X_test,y_test,'SVM')
 
     # TODO:random forest (20 trees are utilized)
-    # model_RandomForestRegressor = ensemble.RandomForestRegressor(n_estimators=20)
-    # try_different_method(model_RandomForestRegressor,X_train,y_train,X_test,y_test,'random-forest')
+    model_RandomForestRegressor = ensemble.RandomForestRegressor(n_estimators=20)
+    try_different_method(model_RandomForestRegressor,X_train,y_train,X_test,y_test,'random-forest')
 
     # TODO:Adaboost regression (50 trees are used)
     # model_AdaBoostRegressor = ensemble.AdaBoostRegressor(n_estimators=50)
