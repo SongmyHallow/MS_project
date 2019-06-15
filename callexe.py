@@ -16,6 +16,7 @@ from sklearn.model_selection import train_test_split
 import alamopy
 import math
 import sympy
+import examples
 from scipy.stats import t, ttest_1samp
 from sympy.parsing.sympy_parser import parse_expr
 from sympy import symbols, lambdify
@@ -72,12 +73,11 @@ def read_input(file,lst,compilefile):
 # output: returned values list
 def repeat_call(infile,compilefile,outfile,lb,ub,loop,numofvar):
     input_values,problem = val_generate(lb,ub,numofvar)
-    input_values = transpose(input_values)
     outlst = []
     inlst = []
     for i in range(len(input_values)):
         create_input(infile,input_values[i])
-        os.system('./'+compilefile)
+        os.system('.\\'+compilefile)
         read_output(outfile,outlst,compilefile)
         read_input(infile,inlst,compilefile)
     return outlst,inlst
@@ -185,8 +185,8 @@ def main():
     # try_different_method(model_SVR,X_train,y_train,X_test,y_test,'SVM')
 
     # TODO:random forest (20 trees are utilized)
-    model_RandomForestRegressor = ensemble.RandomForestRegressor(n_estimators=20)
-    try_different_method(model_RandomForestRegressor,X_train,y_train,X_test,y_test,'random-forest')
+    # model_RandomForestRegressor = ensemble.RandomForestRegressor(n_estimators=20)
+    # try_different_method(model_RandomForestRegressor,X_train,y_train,X_test,y_test,'random-forest')
 
     # TODO:Adaboost regression (50 trees are used)
     # model_AdaBoostRegressor = ensemble.AdaBoostRegressor(n_estimators=50)
@@ -203,6 +203,16 @@ def main():
     # TODO:Extra tree regression
     # model_ExtraTreeRegressor = ExtraTreesRegressor(n_estimators=100)
     # try_different_method(model_ExtraTreeRegressor,X_train,y_train,X_test,y_test,'Extra-tree')
+
+    # TODO:Use alamopy to do the regression
+    sim = examples.sixcamel
+    almsim = alamopy.wrapwriter(sim)
+    res = alamopy.doalamo(X_train,y_train,almname='cam6',monomialpower=(1,2,3,4),multi2power=(1,2),simulator=almsim,expandoutput=True,maxiter=20)
+
+    print("Model expression: ",res['model'],'\n')
+    print("Rhe sum of squared residuals: ",res['ssr'],'\n')
+    print("R squared: ",res['R2'],'\n')
+    print("Root Mean Square Error: ",res['rmse'],'\n')
 
 main()
 
