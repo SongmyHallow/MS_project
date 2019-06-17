@@ -1,0 +1,29 @@
+GAMS 25.1.3  r4e34d435fbd Released Oct 30, 2018 WEX-WEI x86 64bit/MS Windows                                                                                                                                                           06/17/19 15:39:24 Page 1
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+C o m p i l a t i o n
+
+
+   1   parameter a; a = 0;
+   2   display a;
+
+
+COMPILATION TIME     =        0.000 SECONDS      2 MB  25.1.3 r4e34d435fbd WEX-WEI
+GAMS 25.1.3  r4e34d435fbd Released Oct 30, 2018 WEX-WEI x86 64bit/MS Windows                                                                                                                                                           06/17/19 15:39:24 Page 2
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+E x e c u t i o n
+
+
+----      2 PARAMETER a                    =        0.000  
+
+
+EXECUTION TIME       =        0.000 SECONDS      3 MB  25.1.3 r4e34d435fbd WEX-WEI
+
+
+USER: Gary Goldstein                                 G010614:2121CA-WIN
+      Decision Ware, Inc.                                        DC2807
+
+
+**** FILE SUMMARY
+
+Input      C:\MYSong\Graduate\MS_project\almscr\surrogate.gms
+Output     C:\MYSong\Graduate\MS_project\almscr\surrogate.lst

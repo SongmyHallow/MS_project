@@ -38,7 +38,7 @@ def val_generate(lb,ub,numofvar):
         'names': name_lst,
         'bounds': bound_lst
     }
-    param_values = saltelli.sample(problem,2)
+    param_values = saltelli.sample(problem,1000)
     # np.savetxt("param_values.txt", param_values)
     return param_values,problem
 
@@ -207,7 +207,7 @@ def main():
     # TODO:Use alamopy to do the regression
     sim = examples.sixcamel
     almsim = alamopy.wrapwriter(sim)
-    res = alamopy.doalamo(X_train,y_train,almname='cam6',monomialpower=(1,2,3,4),multi2power=(1,2),simulator=almsim,expandoutput=True,maxiter=20)
+    res = alamopy.doalamo(X_train,y_train,almname='cam6',monomialpower=(1,2,3,4,5),multi2power=(1,2,3,4),simulator=almsim,expandoutput=True,maxiter=50)
 
     print("Model expression: ",res['model'],'\n')
     print("Rhe sum of squared residuals: ",res['ssr'],'\n')
