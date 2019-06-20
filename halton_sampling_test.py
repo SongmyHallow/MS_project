@@ -19,14 +19,14 @@ def vdc(n, base=2):
         vdc += remainder/float(denom)
     return vdc
 
-def halton_sequence(size, dim):
+def halton_sequence(size, dim, start):
     seq = []
     primeGen = next_prime()
     next(primeGen)
     for d in range(dim):
         base = next(primeGen)
         seq.append([vdc(i, base) for i in range(size)])
+    for var in range(dim):
+        for i in range(len(seq[var])):
+            seq[var][i] = seq[var][i] + start
     return seq
-
-# sol = halton_sequence(20,4)
-# print(sol)

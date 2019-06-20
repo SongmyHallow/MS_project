@@ -1,13 +1,13 @@
 #!/bin/zsh
 #surface version
 DATE=$(date -d '-1 month' +%Y%m%d)
-File1="/mnt/c/MYSong/Graduate/MS_project/z1.py"
-File2="/mnt/c/MYSong/Graduate/MS_project/almopt.txt"
-File3="/mnt/c/MYSong/Graduate/MS_project/simwrapper.py"
-File4="/mnt/c/MYSong/Graduate/MS_project/logscratch"
-File5="/mnt/c/MYSong/Graduate/MS_project/cam6"
-File6="/mnt/c/MYSong/Graduate/MS_project/input.in"
-File7="/mnt/c/MYSong/Graduate/MS_project/output.out"
+File1="/mnt/c/Users/tjuso/Documents/Graduate/MS_project/z1.py"
+File2="/mnt/c/Users/tjuso/Documents/Graduate/MS_project/almopt.txt"
+File3="/mnt/c/Users/tjuso/Documents/Graduate/MS_project/simwrapper.py"
+File4="/mnt/c/Users/tjuso/Documents/Graduate/MS_project/logscratch"
+File5="/mnt/c/Users/tjuso/Documents/Graduate/MS_project/cam6"
+File6="/mnt/c/Users/tjuso/Documents/Graduate/MS_project/input.in"
+File7="/mnt/c/Users/tjuso/Documents/Graduate/MS_project/output.out"
 
 # localFile=$"/mnt/c/Users/tjuso/Documents/Graduate/MS_project/z1.py"
 

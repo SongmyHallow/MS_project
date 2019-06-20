@@ -1,3 +1,4 @@
+*.sh
 *.png
 input.in
 output.out

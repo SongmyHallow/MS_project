@@ -1,40 +1,25 @@
 from __future__ import division
 from pyomo.environ import *
+from pyomo.opt import SolverFactory
+import numpy as np
+model = ConcreteModel()
 
-model = ConcreteModel(name="(WL)")
-W = ['Harlingen', 'Memphis', 'Ashland'] 
-C = ['NYC', 'LA', 'Chicago', 'Houston']
-d = {('Harlingen', 'NYC'): 1956, 
-    ('Harlingen','LA'): 1606,
-    ('Harlingen','Chicago'):1410,
-    ('Harlingen','Houston'):330,
-    ('Memphis','NYC'):1096,
-    ('Memphis','LA'):1792,
-    ('Memphis','Chicago'):531,
-    ('Memphis','Houston'):567,
-    ('Ashland', 'NYC'):485,
-    ('Ashland', 'LA'):2322,
-    ('Ashland', 'Chicago'):324,
-    ('Ashland', 'Houston'): 1236, } 
-P = 2
-model.x = Var(W,C,bounds=(0,1))
-model.y = Var(W, within=Binary)
+model.A = Set(initialize=['x1','x2'])
+lb = {'x1':-150, 'x2':-150}
+ub = {'x1':150, 'x2':150}
 
-def obj_rule(m):
-  return sum(d[w,c]*m.x[w,c] for w in W for c in C)
-model.obj = Objective(rule=obj_rule)
+def fb(model, i):
+  return (lb[i], ub[i])
 
-def one_per_cust_rule(m,c):
-  return sum(m.x[w,c] for w in W) == 1
-model.one_per_cust = Constraint(C, rule=one_per_cust_rule)
+model.x = Var(model.A, within=Reals, bounds=fb)
 
-def warehouse_active_rule(m,w,c):
-  return m.x[w,c] <= m.y[w]
-model.warehouse_active = Constraint(W,C,rule=warehouse_active_rule)
+def objRule(model):
+  return 0.585*np.exp(127)*model.x['x1'] + 0.255*np.exp(125)*model.x['x2']**2 - 0.542*np.exp(123)*model.x['x1']**3 - 0.223*np.exp(123)*model.x['x2']**3
+model.obj = Objective(rule=objRule, sense=maximize)
 
-def num_warehouse_rule(m):
-  return sum(m.y[w] for w in W) <= P
-model.num_warehouse = Constraint(rule=num_warehouse_rule)
+opt = SolverFactory('baron')
+opt.solve(model)
+model.display()
 
-SolverFactory('baron').solve(model)
-model.pprint()
+for ele in model.x:
+  print(value(model.x[ele]))

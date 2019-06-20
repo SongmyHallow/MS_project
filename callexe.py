@@ -7,6 +7,9 @@ import numpy as np
 from SALib.sample import saltelli
 from SALib.util import read_param_file
 
+# imported different sampling methods from local python files
+from halton_sampling_test import halton_sequence
+
 # imported packages for scikit-learn
 from pandas import DataFrame
 from sklearn import linear_model,tree,svm,neighbors,ensemble
@@ -25,7 +28,7 @@ def compileSource(file):
     os.system('gcc source_princetonlibgloballib/'+file+'.c -lm -o '+file)
 
 # helper function to generate input value with sobel sequence
-def val_generate(lb,ub,numofvar):
+def val_generate(lb,ub,numofvar,index):
     bound_lst = []
     name_lst = []
     index = 1
@@ -38,9 +41,19 @@ def val_generate(lb,ub,numofvar):
         'names': name_lst,
         'bounds': bound_lst
     }
-    param_values = saltelli.sample(problem,1000)
+    param_values = saltelli.sample(problem,10)
     # np.savetxt("param_values.txt", param_values)
     return param_values,problem
+
+def val_generate_halton(lb,ub,numofvar,index,sp):
+    index_seq = halton_sequence(500,1,lb[index])
+    param_values = []
+    for i in range(len(index_seq[0])):
+        lst_copy = sp[:]
+        lst_copy[index] = index_seq[0][i]
+        param_values.append(lst_copy)
+    print(param_values)
+    return param_values
 
 
 # generate input.in file according to requested number of input values
@@ -71,8 +84,9 @@ def read_input(file,lst,compilefile):
 # call the executable file repeatedly
 # input: input file name, number of variables, number of loops
 # output: returned values list
-def repeat_call(infile,compilefile,outfile,lb,ub,loop,numofvar):
-    input_values,problem = val_generate(lb,ub,numofvar)
+def repeat_call(infile,compilefile,outfile,lb,ub,index,numofvar,sp):
+    # input_values,problem = val_generate(lb,ub,numofvar,index)
+    input_values = val_generate_halton(lb,ub,numofvar,index,sp)
     outlst = []
     inlst = []
     for i in range(len(input_values)):
@@ -154,12 +168,16 @@ if __name__ == '__main__':
     outputFile = sys.argv[4]
 
 def main():
-    # os.system("mkdir outfiles/"+compileFile)
     compileSource(compileFile)
     numOfVar, lb, ub, sp = read_datafile(dataFile)
-    ydata,in_values = repeat_call(inputFile, compileFile, outputFile, lb, ub, 10, numOfVar)
-
-    # print(in_values)
+    initial_vars = sp
+    for i in range(len(initial_vars)):
+        ele_lb = lb[i]
+        ele_ub = ub[i]
+        lb[i] = initial_vars[i]
+        ub[i] = initial_vars[i]+1    
+        ydata,in_values = repeat_call(inputFile, compileFile, outputFile, lb, ub, i, numOfVar, sp)
+        
     # test = generate_dataframe(in_values,problem,ydata)
     # name_lst = problem['names'].append('Y')
     # df = DataFrame(test,columns=name_lst)
@@ -169,8 +187,21 @@ def main():
     # plt.grid(True)
     # plt.savefig('test.png')
 
-    X_train,X_test,y_train,y_test=train_test_split(in_values,ydata,test_size=0.25)
-    # print(y_train)
+        X_train,X_test,y_train,y_test=train_test_split(in_values,ydata,test_size=0.25)
+        # TODO:Use alamopy to do the regression
+        sim = examples.sixcamel
+        almsim = alamopy.wrapwriter(sim)
+        
+        res = alamopy.doalamo(X_train,y_train,almname='cam6',monomialpower=(1,2,3),multi2power=(1,2,3),simulator=almsim,expandoutput=True,maxiter=20)
+        print(res)
+        print("Model expression: ",res['model'],'\n')
+        print("Rhe sum of squared residuals: ",res['ssr'],'\n')
+        print("R squared: ",res['R2'],'\n')
+        print("Root Mean Square Error: ",res['rmse'],'\n')
+        print("=======================================================================")
+        print("whole result ", res)
+        break
+        
 
     # TODO:decision tree model
     # model_DecisionTreeRegressor = tree.DecisionTreeRegressor()
@@ -202,17 +233,7 @@ def main():
 
     # TODO:Extra tree regression
     # model_ExtraTreeRegressor = ExtraTreesRegressor(n_estimators=100)
-    # try_different_method(model_ExtraTreeRegressor,X_train,y_train,X_test,y_test,'Extra-tree')
-
-    # TODO:Use alamopy to do the regression
-    sim = examples.sixcamel
-    almsim = alamopy.wrapwriter(sim)
-    res = alamopy.doalamo(X_train,y_train,almname='cam6',monomialpower=(1,2,3,4,5),multi2power=(1,2,3,4),simulator=almsim,expandoutput=True,maxiter=50)
-
-    print("Model expression: ",res['model'],'\n')
-    print("Rhe sum of squared residuals: ",res['ssr'],'\n')
-    print("R squared: ",res['R2'],'\n')
-    print("Root Mean Square Error: ",res['rmse'],'\n')
+    # try_different_method(model_ExtraTreeRegressor,X_train,y_train,X_test,y_test,'Extra-tree')    
 
 main()
 
