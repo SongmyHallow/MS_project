@@ -5,7 +5,7 @@ output.out
 # Ignore the Reference directory
 *.exe
 dfo_results/
-Reference/
+# Reference/
 problemdata/
 source_convexmodels/
 manual/
