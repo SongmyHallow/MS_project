@@ -23,6 +23,10 @@ import examples
 from scipy.stats import t, ttest_1samp
 from sympy.parsing.sympy_parser import parse_expr
 from sympy import symbols, lambdify
+# imported pyomo environment
+from pyomo.environ import *
+from pyomo.opt import SolverFactory
+
 # compile .c file
 def compileSource(file):
     os.system('gcc source_princetonlibgloballib/'+file+'.c -lm -o '+file)
@@ -52,7 +56,7 @@ def val_generate_halton(lb,ub,numofvar,index,sp):
         lst_copy = sp[:]
         lst_copy[index] = index_seq[0][i]
         param_values.append(lst_copy)
-    print(param_values)
+    # print(param_values)
     return param_values
 
 
@@ -64,22 +68,19 @@ def create_input(file,values):
     infile.close()
 
 # read returned value from file
-def read_output(file,lst,compilefile):
+def read_output(file,lst,savefile):
     readfile = open(file, 'r')
-    # outfile = open(file,'w')
     for line in readfile.readlines():
         lst.append(float(line.strip()))
-        # outfile.write(line)
     readfile.close()
-    # outfile.close()
 
-def read_input(file,lst,compilefile):
+def read_input(file,lst):
     temp = []
     readfile = open(file,'r')
     for line in readfile.readlines():
         temp.append(float(line.strip()))
-    readfile.close()
     lst.append(temp)
+    readfile.close()
 
 # call the executable file repeatedly
 # input: input file name, number of variables, number of loops
@@ -88,13 +89,13 @@ def repeat_call(infile,compilefile,outfile,lb,ub,index,numofvar,sp):
     # input_values,problem = val_generate(lb,ub,numofvar,index)
     input_values = val_generate_halton(lb,ub,numofvar,index,sp)
     outlst = []
-    inlst = []
+    # inlst = []
     for i in range(len(input_values)):
         create_input(infile,input_values[i])
         os.system('.\\'+compilefile)
         read_output(outfile,outlst,compilefile)
-        read_input(infile,inlst,compilefile)
-    return outlst,inlst
+        # read_input(infile,inlst)
+    return outlst,input_values
 
 # read data file to get values of number of vars, boundaries nad starting points
 # input: data file name
@@ -176,8 +177,8 @@ def main():
         ele_ub = ub[i]
         lb[i] = initial_vars[i]
         ub[i] = initial_vars[i]+1    
-        ydata,in_values = repeat_call(inputFile, compileFile, outputFile, lb, ub, i, numOfVar, sp)
-        
+        y_values,X_values = repeat_call(inputFile, compileFile, outputFile, lb, ub, 1, numOfVar, sp)
+
     # test = generate_dataframe(in_values,problem,ydata)
     # name_lst = problem['names'].append('Y')
     # df = DataFrame(test,columns=name_lst)
@@ -187,19 +188,48 @@ def main():
     # plt.grid(True)
     # plt.savefig('test.png')
 
-        X_train,X_test,y_train,y_test=train_test_split(in_values,ydata,test_size=0.25)
-        # TODO:Use alamopy to do the regression
-        sim = examples.sixcamel
-        almsim = alamopy.wrapwriter(sim)
-        
-        res = alamopy.doalamo(X_train,y_train,almname='cam6',monomialpower=(1,2,3),multi2power=(1,2,3),simulator=almsim,expandoutput=True,maxiter=20)
-        print(res)
+        X_train,X_test,y_train,y_test=train_test_split(X_values,y_values,test_size=0.25)
+        # # TODO:Use alamopy to do the regression
+        # print(X_train,y_train)
+        res = alamopy.alamo(X_train,y_train,xval=X_test,zval=y_test,xmin=lb,xmax=ub,monomialpower=(1,2),multi2power=(1,2))
+        # print(res)
         print("Model expression: ",res['model'],'\n')
         print("Rhe sum of squared residuals: ",res['ssr'],'\n')
         print("R squared: ",res['R2'],'\n')
         print("Root Mean Square Error: ",res['rmse'],'\n')
-        print("=======================================================================")
-        print("whole result ", res)
+
+        labels = res['xlabels']
+        model = ConcreteModel(name=labels[i])
+        expr = res['f(model)'] # result function in lambda form
+
+        lowBound = {}
+        upperBound = {}
+        for (label,val) in zip(labels,sp):
+            lowBound[label] = val
+        for (label,val) in zip(labels,sp):
+            upperBound[label] = val
+        lowBound[labels[i]] = ele_lb
+        upperBound[labels[i]] = ele_ub
+        
+        def fb(model,i):
+            return (lowBound[i],upperBound[i])
+        model.A = Set(initialize=labels)
+        model.x = Var(model.A,within=Reals,bounds=fb)
+        
+        def objRule(model):
+            var_lst = []
+            for var_name in model.x:
+                var_lst.append(model.x[var_name])
+            return expr(var_lst)
+
+        model.obj = Objective(rule=objRule,sense=minimize)
+        opt = SolverFactory('baron')
+        results = opt.solve(model)
+        results.write()
+        model.display()
+
+        sp[i] = value(model.x[labels[i]])
+        print(sp)
         break
         
 
