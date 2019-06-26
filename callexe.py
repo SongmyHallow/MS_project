@@ -193,10 +193,15 @@ def main():
         # print(X_train,y_train)
         res = alamopy.alamo(X_train,y_train,xval=X_test,zval=y_test,xmin=lb,xmax=ub,monomialpower=(1,2),multi2power=(1,2))
         # print(res)
-        print("Model expression: ",res['model'],'\n')
-        print("Rhe sum of squared residuals: ",res['ssr'],'\n')
-        print("R squared: ",res['R2'],'\n')
-        print("Root Mean Square Error: ",res['rmse'],'\n')
+        print("===============================================================")
+        print("ALAMO results")
+        print("===============================================================")
+
+        print("#Model expression: ",res['model'])
+        print("#Rhe sum of squared residuals: ",res['ssr'])
+        print("#R squared: ",res['R2'])
+        print("#Root Mean Square Error: ",res['rmse'])
+        print("---------------------------------------------------------------")
 
         labels = res['xlabels']
         model = ConcreteModel(name=labels[i])
@@ -226,44 +231,22 @@ def main():
         opt = SolverFactory('baron')
         results = opt.solve(model)
         results.write()
+        model.pprint()
         model.display()
-
         sp[i] = value(model.x[labels[i]])
-        print(sp)
+        print("Values of all variables",sp)
+        print("This is variable: ",i)
+
+        # if(sp[i] <= ele_ub):
+
         break
         
 
-    # TODO:decision tree model
-    # model_DecisionTreeRegressor = tree.DecisionTreeRegressor()
-    # try_different_method(model_DecisionTreeRegressor,X_train,y_train,X_test,y_test,'Decision-tree')
+   
 
     # TODO:linear regression
     # model_LinearRegression = linear_model.LinearRegression()
     # try_different_method(model_LinearRegression,X_train,y_train,X_test,y_test,'linear-regression')
-
-    # TODO:SVM
-    # model_SVR = svm.SVR(gamma='scale')
-    # try_different_method(model_SVR,X_train,y_train,X_test,y_test,'SVM')
-
-    # TODO:random forest (20 trees are utilized)
-    # model_RandomForestRegressor = ensemble.RandomForestRegressor(n_estimators=20)
-    # try_different_method(model_RandomForestRegressor,X_train,y_train,X_test,y_test,'random-forest')
-
-    # TODO:Adaboost regression (50 trees are used)
-    # model_AdaBoostRegressor = ensemble.AdaBoostRegressor(n_estimators=50)
-    # try_different_method(model_AdaBoostRegressor,X_train,y_train,X_test,y_test,'Adaboost')
-
-    # TODO: GBRT regression (100 trees are used)
-    # model_GradientBoostingRegressor = ensemble.GradientBoostingRegressor(n_estimators=100)
-    # try_different_method(model_GradientBoostingRegressor,X_train,y_train,X_test,y_test,'GBRT')
-
-    # TODO:Bagging regression
-    # model_BaggingRegressor = BaggingRegressor()
-    # try_different_method(model_BaggingRegressor,X_train,y_train,X_test,y_test,'Bagging')
-
-    # TODO:Extra tree regression
-    # model_ExtraTreeRegressor = ExtraTreesRegressor(n_estimators=100)
-    # try_different_method(model_ExtraTreeRegressor,X_train,y_train,X_test,y_test,'Extra-tree')    
 
 main()
 
