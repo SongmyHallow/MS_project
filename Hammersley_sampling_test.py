@@ -98,7 +98,7 @@ def hammersley_test ( ):
     print ( '  Use M = %d' % ( m ) )
     print ( '  Use N = %d' % ( n ) )
     print ( '' )
-    for i in range ( 0, 11 ):
+    for i in range ( 0, 17 ):
       r = hammersley ( i, m, n )
       print ( '  %3d' % ( i ), end = '' )
       for j in range ( 0, m ):

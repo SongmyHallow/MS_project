@@ -9,7 +9,7 @@ from SALib.util import read_param_file
 
 # imported different sampling methods from local python files
 from halton_sampling_test import halton_sequence
-
+from Hammersley_sampling_test import hammersley
 # imported packages for scikit-learn
 from pandas import DataFrame
 from sklearn import linear_model,tree,svm,neighbors,ensemble
@@ -26,7 +26,8 @@ from sympy import symbols, lambdify
 # imported pyomo environment
 from pyomo.environ import *
 from pyomo.opt import SolverFactory
-
+from pyomo.core.base.symbolic import differentiate 
+from pyomo.core.expr.current import identify_variables
 # compile .c file
 def compileSource(file):
     os.system('gcc source_princetonlibgloballib/'+file+'.c -lm -o '+file)
@@ -50,7 +51,7 @@ def val_generate(lb,ub,numofvar,index):
     return param_values,problem
 
 def val_generate_halton(lb,ub,numofvar,index,sp):
-    index_seq = halton_sequence(500,1,lb[index])
+    index_seq = halton_sequence(100,1,lb[index])
     param_values = []
     for i in range(len(index_seq[0])):
         lst_copy = sp[:]
@@ -59,6 +60,23 @@ def val_generate_halton(lb,ub,numofvar,index,sp):
     # print(param_values)
     return param_values
 
+def val_generate_hammersley(lb,ub,numofvar,index,sp,points):
+    param_values = []
+    for i in range(1,points):
+        val_point = hammersley(i,1,16)
+        lst_copy = sp[:]
+        lst_copy[index] = lb[index]+val_point[0]
+        param_values.append(lst_copy)
+    return param_values
+
+def val_generate_evenly(lb,ub,numofvar,index,sp,points):
+    index_seq = np.linspace(lb[index],ub[index],points)
+    param_values = []
+    for i in range(len(index_seq)):
+        lst_copy = sp[:]
+        lst_copy[index] = index_seq[i]
+        param_values.append(lst_copy)
+    return param_values
 
 # generate input.in file according to requested number of input values
 def create_input(file,values):
@@ -87,7 +105,9 @@ def read_input(file,lst):
 # output: returned values list
 def repeat_call(infile,compilefile,outfile,lb,ub,index,numofvar,sp):
     # input_values,problem = val_generate(lb,ub,numofvar,index)
-    input_values = val_generate_halton(lb,ub,numofvar,index,sp)
+    # input_values = val_generate_halton(lb,ub,numofvar,index,sp)
+    # input_values = val_generate_evenly(lb,ub,numofvar,index,sp,50)
+    input_values = val_generate_hammersley(lb,ub,numofvar,index,sp,17)
     outlst = []
     # inlst = []
     for i in range(len(input_values)):
@@ -171,78 +191,111 @@ if __name__ == '__main__':
 def main():
     compileSource(compileFile)
     numOfVar, lb, ub, sp = read_datafile(dataFile)
-    initial_vars = sp
-    for i in range(len(initial_vars)):
-        ele_lb = lb[i]
-        ele_ub = ub[i]
-        lb[i] = initial_vars[i]
-        ub[i] = initial_vars[i]+1    
-        y_values,X_values = repeat_call(inputFile, compileFile, outputFile, lb, ub, 1, numOfVar, sp)
 
-    # test = generate_dataframe(in_values,problem,ydata)
-    # name_lst = problem['names'].append('Y')
-    # df = DataFrame(test,columns=name_lst)
-    # plt.scatter(df['x2'], df['Y'], color='red')
-    # plt.xlabel('x2', fontsize=14)
-    # plt.ylabel('Y_value', fontsize=14)
-    # plt.grid(True)
-    # plt.savefig('test.png')
+    # -1:left; 0:stay; 1:right
+    move_flag = [0] * len(sp) # indicate if move the range
+    for cycle in range(200):
+        for i in range(len(sp)):
+            ele_lb = lb[i] # lower bound of the i variable
+            ele_ub = ub[i] # upper bound of the i variable
 
-        X_train,X_test,y_train,y_test=train_test_split(X_values,y_values,test_size=0.25)
-        # # TODO:Use alamopy to do the regression
-        # print(X_train,y_train)
-        res = alamopy.alamo(X_train,y_train,xval=X_test,zval=y_test,xmin=lb,xmax=ub,monomialpower=(1,2),multi2power=(1,2))
-        # print(res)
-        print("===============================================================")
-        print("ALAMO results")
-        print("===============================================================")
+            if(move_flag[i] == -1):
+                lb[i] = sp[i]-1
+                ub[i] = sp[i]
+            elif(move_flag[i] == 1):
+                lb[i] = sp[i]
+                ub[i] = sp[i]+1
+            else:
+                lb[i] = sp[i]-0.5
+                ub[i] = sp[i]+0.5
 
-        print("#Model expression: ",res['model'])
-        print("#Rhe sum of squared residuals: ",res['ssr'])
-        print("#R squared: ",res['R2'])
-        print("#Root Mean Square Error: ",res['rmse'])
-        print("---------------------------------------------------------------")
+            y_values,X_values = repeat_call(inputFile, compileFile, outputFile, lb, ub, 1, numOfVar, sp)
 
-        labels = res['xlabels']
-        model = ConcreteModel(name=labels[i])
-        expr = res['f(model)'] # result function in lambda form
+        # test = generate_dataframe(in_values,problem,ydata)
+        # name_lst = problem['names'].append('Y')
+        # df = DataFrame(test,columns=name_lst)
+        # plt.scatter(df['x2'], df['Y'], color='red')
+        # plt.xlabel('x2', fontsize=14)
+        # plt.ylabel('Y_value', fontsize=14)
+        # plt.grid(True)
+        # plt.savefig('test.png')
 
-        lowBound = {}
-        upperBound = {}
-        for (label,val) in zip(labels,sp):
-            lowBound[label] = val
-        for (label,val) in zip(labels,sp):
-            upperBound[label] = val
-        lowBound[labels[i]] = ele_lb
-        upperBound[labels[i]] = ele_ub
+            X_train,X_test,y_train,y_test=train_test_split(X_values,y_values,test_size=0.25)
+            # # TODO:Use alamopy to do the regression
+            print(X_train,y_train)
+            print(X_test,y_test)
+            # break
+            # alamopy.addCustomFunctions(fcn_list)
+            # alamopy.addCustomFunctions(["0.00001*x1**2 + 0.00001*x2**2"])
+            res = alamopy.alamo(X_train,y_train,xval=X_test,zval=y_test,xmin=lb,xmax=ub,monomialpower=(1,2),multi2power=(1,2), showalm=True)
+            # print(res)
+            print("===============================================================")
+            print("ALAMO results")
+            print("===============================================================")
+
+            print("#Model expression: ",res['model'])
+            print("#Rhe sum of squared residuals: ",res['ssr'])
+            print("#R squared: ",res['R2'])
+            print("#Root Mean Square Error: ",res['rmse'])
+            print("---------------------------------------------------------------")
+
+            labels = res['xlabels']
+            model = ConcreteModel(name=labels[i])
+            expr = res['f(model)'] # result function in lambda form
+
+            # lower/upper bound used in baron, fix other variables
+            lowBound = {}
+            upperBound = {}
+            for (label,val) in zip(labels,sp):
+                lowBound[label] = val
+            for (label,val) in zip(labels,sp):
+                upperBound[label] = val
+            lowBound[labels[i]] = lb[i]
+            upperBound[labels[i]] = ub[i]
+            
+            def fb(model,i):
+                return (lowBound[i],upperBound[i])
+            model.A = Set(initialize=labels)
+            model.x = Var(model.A,within=Reals,bounds=fb)
+            
+            def objRule(model):
+                var_lst = []
+                for var_name in model.x:
+                    var_lst.append(model.x[var_name])
+                return expr(var_lst)
+
+            model.obj = Objective(rule=objRule,sense=minimize)
+            opt = SolverFactory('baron')
+            results = opt.solve(model)
+            results.write()
+            model.pprint()
+            model.display()
+            try:
+                sp[i] = sp[i] - 0.1
+            except:
+                if(sp[i] == lb[i]):
+                    move_flag[i] = -1
+                elif(sp[i] == ub[i]):
+                    move_flag[i] = 1
+                else:
+                    move_flag[i] = 0
+                continue
+            print("Values of all variables",sp)
+            print("This is variable: ",i)
+            print("This is cycle: ",cycle)
+            if(sp[i] == lb[i]):
+                move_flag[i] = -1
+            elif(sp[i] == ub[i]):
+                move_flag[i] = 1
+            else:
+                move_flag[i] = 0
+            print("The flag for values: ",move_flag)
+            varList = list(identify_variables(model.obj.expr)) 
+            firstDerivs = differentiate(model.obj.expr, wrt_list=varList) 
+            print(varList)
+            print(firstDerivs)
+            break
         
-        def fb(model,i):
-            return (lowBound[i],upperBound[i])
-        model.A = Set(initialize=labels)
-        model.x = Var(model.A,within=Reals,bounds=fb)
-        
-        def objRule(model):
-            var_lst = []
-            for var_name in model.x:
-                var_lst.append(model.x[var_name])
-            return expr(var_lst)
-
-        model.obj = Objective(rule=objRule,sense=minimize)
-        opt = SolverFactory('baron')
-        results = opt.solve(model)
-        results.write()
-        model.pprint()
-        model.display()
-        sp[i] = value(model.x[labels[i]])
-        print("Values of all variables",sp)
-        print("This is variable: ",i)
-
-        # if(sp[i] <= ele_ub):
-
-        break
-        
-
-   
 
     # TODO:linear regression
     # model_LinearRegression = linear_model.LinearRegression()
