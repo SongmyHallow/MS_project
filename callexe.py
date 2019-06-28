@@ -208,7 +208,7 @@ def main():
             else:
                 lb[i] = sp[i]-0.5
                 ub[i] = sp[i]+0.5
-
+            
             y_values,X_values = repeat_call(inputFile, compileFile, outputFile, lb, ub, 1, numOfVar, sp)
 
         # test = generate_dataframe(in_values,problem,ydata)
@@ -219,14 +219,15 @@ def main():
         # plt.ylabel('Y_value', fontsize=14)
         # plt.grid(True)
         # plt.savefig('test.png')
-
+            
             X_train,X_test,y_train,y_test=train_test_split(X_values,y_values,test_size=0.25)
             # # TODO:Use alamopy to do the regression
-            print(X_train,y_train)
-            print(X_test,y_test)
+            # print(X_train,y_train)
+            # print(X_test,y_test)
             # break
             # alamopy.addCustomFunctions(fcn_list)
             # alamopy.addCustomFunctions(["0.00001*x1**2 + 0.00001*x2**2"])
+            print(lb,ub)
             res = alamopy.alamo(X_train,y_train,xval=X_test,zval=y_test,xmin=lb,xmax=ub,monomialpower=(1,2),multi2power=(1,2), showalm=True)
             # print(res)
             print("===============================================================")
