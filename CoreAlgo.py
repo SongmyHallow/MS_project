@@ -105,7 +105,7 @@ def generate_bbox_values(filename,variables,sequence,index):
         input_copy = variables[:]
         input_copy[index] = val
         write_input(input_filename,input_copy)
-        os.system('.\\'+filename)
+        os.system('./'+filename)
         read_output(output_filename,output_values)
     return output_values
 
@@ -114,7 +114,7 @@ def check_bbox_optimal(filename,coordinate):
     output_filename = "output.out"
     output_values = []
     write_input(input_filename,coordinate)
-    os.system('.\\'+filename)
+    os.system('./'+filename)
     read_output(output_filename,output_values)
     return output_values[0]
 
