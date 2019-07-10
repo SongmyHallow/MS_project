@@ -1,4 +1,19 @@
 '''
+MS project algorithm
+Muyi Song (muyis)
+Latest update: 7/8/2019
+
+command line syntax: python CoreAlgo.py (name of model file) (number of iterations)
+                                            sys.argv[1]             sys.argv[2]
+sampling methods:
+1. Hammersley sequence
+2. Ver der Corput sequence
+
+search algorithm:
+1. Coordinate search (shuffle the order of variables every iteration)
+=================================================================================
+'''
+'''
 Compile .c file
 :param string filename: name of c file (with out extension)
 '''
