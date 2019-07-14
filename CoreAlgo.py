@@ -120,7 +120,7 @@ def generate_bbox_values(filename,variables,sequence,index):
         input_copy = variables[:]
         input_copy[index] = val
         write_input(input_filename,input_copy)
-        os.system('./'+filename)
+        os.system('.\\'+filename)
         read_output(output_filename,output_values)
     return output_values
 
@@ -129,7 +129,7 @@ def check_bbox_optimal(filename,coordinate):
     output_filename = "output.out"
     output_values = []
     write_input(input_filename,coordinate)
-    os.system('./'+filename)
+    os.system('.\\'+filename)
     read_output(output_filename,output_values)
     return output_values[0]
 
@@ -231,8 +231,15 @@ updating variables' boundaries
 def update_boundary(lowerBound, upperBound, startPoint, index, radius):
     new_lb = startPoint[:]
     new_ub = startPoint[:]
-    new_lb[index] = startPoint[index] - radius
-    new_ub[index] = startPoint[index] + radius
+    # check if boundary after modification will be out of boundary
+    if((startPoint[index] - radius) < lowerBound[index]):
+        new_lb[index] = lowerBound[index]
+    else:
+        new_lb[index] = startPoint[index] - radius
+    if((startPoint[index] + radius) > upperBound[index]):
+        new_ub[index] = upperBound[index]
+    else:
+        new_ub[index] = startPoint[index] + radius
     return new_lb, new_ub
 
 '''
@@ -276,13 +283,18 @@ update search radius
 :param radius: current search radius
 :return updated search radius
 '''
-def update_radius(flag,radius):
+def update_radius(flag,radius,obj_lst):
     # box value does not match, decrease search radius
     if(flag == -1):
         radius = radius * 0.8
     # box value matches, increase search radius
     elif(flag == 1):
-        radius = radius * 2
+        if(len(obj_lst)>1 and obj_lst[-2]/obj_lst[-1]<10):
+            radius = radius * 2
+        elif(len(obj_lst)>1 and obj_lst[-2]/obj_lst[-1]>10):
+            radius = radius * 1.2
+        else:
+            radius = radius * 1.5
     else:
         pass
     return radius
@@ -313,20 +325,31 @@ Write data into csv file
 '''
 from pandas import DataFrame
 import csv
-def make_csv(name,values,calls,time):
+def make_csv(name,values,calls,time,points,cycle):
     csvfile = open('experimentData.csv','a+',newline='')
-    fieldsnames = ['model_name','time','values','calls']
+    fieldsnames = ['model_name','time','cycle','values','calls','point']
     # writer = csv.writer(csvfile,delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
     writer = csv.DictWriter(csvfile,fieldnames=fieldsnames)
     # values = list_int2str(values)
     # calls = list_int2str(calls)
     # writer.writerow([name,calls[-1]]+values)
-    writer.writerow({
-        'model_name':name,
-        'time':time,
-        'values':values[-1],
-        'calls':calls[-1]
-    })
+    if(len(points)>0):
+        writer.writerow({
+            'model_name':name,
+            'time':time,
+            'cycle':cycle,
+            'values':values[-1],
+            'calls':calls[-1],
+            'point':points[-1]
+        })
+    else:
+        writer.writerow({
+            'model_name':name,
+            'time':time,
+            'cycle':cycle,
+            'values':values[-1],
+            'calls':calls[-1]
+        })
     csvfile.close()
 
 def list_int2str(lst):
@@ -349,7 +372,7 @@ def coordinate_search(cycles,startPoint, lowerBound, upperBound):
     counter = 0
     obj_lst = []
     counter_lst = []
-
+    optimal_point_lst = []
     for cycle in range(cycles):
         print("The cycle: ", cycle)
         shuffle_order = list(range(len(startPoint)))
@@ -365,6 +388,7 @@ def coordinate_search(cycles,startPoint, lowerBound, upperBound):
             labels,expr = call_alamopy(Xdata,ydata,lb[indexOfVar],ub[indexOfVar])
             # call baron to optimize the function and see where do we get the opt value
             optimal_point,optimal_val = call_baron(labels,expr,lb,ub,startPoint,indexOfVar)
+            optimal_point_lst.append(optimal_point)
             # check the qualification of regression
             box_val = check_bbox_optimal(compileFile,optimal_point)
             # update counter & counter list
@@ -373,10 +397,10 @@ def coordinate_search(cycles,startPoint, lowerBound, upperBound):
             flag = update_status(optimal_val,box_val,optimal_point,startPoint,indexOfVar,obj_lst,counter,counter_lst)
             if(flag == "end"):
                 print("Optimal value is found within requested iterations")
-                return obj_lst, counter_lst
+                return obj_lst, counter_lst,optimal_point_lst, cycle+1
             # update search radius
-            radius = update_radius(flag, radius)
-    return obj_lst, counter_lst
+            radius = update_radius(flag, radius,obj_lst)
+    return obj_lst, counter_lst, optimal_point_lst,cycles
 """
 ================================================================================
 main function
@@ -393,10 +417,10 @@ def main():
     numOfVar, lowerBound, upperBound, startPoint = read_datafile(compileFile)
     # do coordinate search algorithm
     start_time = time.time()
-    values, calls = coordinate_search(cycles, startPoint, lowerBound, upperBound)
+    values, calls, point_lst, cycle = coordinate_search(cycles, startPoint, lowerBound, upperBound)
     end_time = time.time()
     duration = end_time - start_time
     # make a plot
     make_plot(values, calls, compileFile)
-    make_csv(compileFile,values,calls,duration)
+    make_csv(compileFile,values,calls,duration,point_lst,cycle)
 main()

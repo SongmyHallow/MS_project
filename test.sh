@@ -11,15 +11,15 @@ testFile=$"/mnt/c/Users/tjuso/Documents/Graduate/MS_project/DataFileName.txt"
 path=$"/mnt/c/Users/tjuso/Documents/Graduate/MS_project/source_princetonlibgloballib" 
 # for surface
 # path=$"/mnt/c/MYSong/Graduate/MS_project/problemdata"
-# files=$(ls $path)
-# for fullname in $files
-# do
-#     echo ${fullname%.*c*} >> DataFileName.txt
-# done
-
-cat $testFile | while read line
+files=$(ls $path)
+for fullname in $files
 do
-    echo $line
-    python3 CoreAlgo.py $line 1
+    echo ${fullname%.*c*} >> DataFileName.txt
 done
+
+# cat $testFile | while read line
+# do
+#     echo $line
+#     python3 CoreAlgo.py $line 1
+# done
 
