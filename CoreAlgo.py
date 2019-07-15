@@ -150,7 +150,7 @@ def call_alamopy(input_values,output_values,lowerBound,upperBound):
 #     print("X_test",X_test)
 #     print("y_train",y_train)
 #     print("y_test",y_test)
-    alamo_result = alamopy.alamo(xdata=X_train,zdata=y_train,xval=X_test,zval=y_test,xmin=lowerBound,xmax=upperBound,monomialpower=(1,2))
+    alamo_result = alamopy.alamo(xdata=X_train,zdata=y_train,xval=X_test,zval=y_test,xmin=lowerBound,xmax=upperBound,monomialpower=(1,2),multi2power=(1,2))
 #     print("===============================================================")
 #     print("ALAMO results")
 #     print("===============================================================")
@@ -316,7 +316,7 @@ def make_plot(values, calls, name):
     plt.xlabel("Number of calls")
     plt.ylabel("Optimal values")
     plt.title(name)
-    plt.savefig(name+".png")
+    plt.savefig("plots\\"+name+".png")
     print("Plot of model "+ name +" is saved")
 
 

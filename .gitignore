@@ -6,6 +6,7 @@ output.out
 *.exe
 dfo_results/
 manual/
+plots/
 # Reference/
 problemdata/
 source_convexmodels/
