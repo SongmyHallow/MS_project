@@ -1,0 +1,30 @@
+GAMS 25.0.3  r65947 Released Mar 21, 2018 WEX-WEI x86 64bit/MS Windows                                                                                                                                                                 07/16/19 08:39:11 Page 1
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+C o m p i l a t i o n
+
+
+   1   parameter a; a = 0;
+   2   display a;
+
+
+COMPILATION TIME     =        0.000 SECONDS      2 MB  25.0.3 r65947 WEX-WEI
+GAMS 25.0.3  r65947 Released Mar 21, 2018 WEX-WEI x86 64bit/MS Windows                                                                                                                                                                 07/16/19 08:39:11 Page 2
+G e n e r a l   A l g e b r a i c   M o d e l i n g   S y s t e m
+E x e c u t i o n
+
+
+----      2 PARAMETER a                    =        0.000  
+
+
+EXECUTION TIME       =        0.000 SECONDS      3 MB  25.0.3 r65947 WEX-WEI
+
+
+USER: Nikolaos Sahinidis, Single User License        G190107/0001AB-GEN
+      Carnegie Mellon University, Dept of Chemical Engineering.  DC8887
+      License for teaching and research at degree granting institutions
+
+
+**** FILE SUMMARY
+
+Input      C:\Users\tjuso\Documents\Graduate\MS_project\almscr\surrogate.gms
+Output     C:\Users\tjuso\Documents\Graduate\MS_project\almscr\surrogate.lst
