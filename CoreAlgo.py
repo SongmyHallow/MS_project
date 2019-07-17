@@ -59,41 +59,7 @@ def read_datafile(filename):
     return numOfVar,lowBound,upBound,startPoint
 
 # Sampling
-'''
-1. Hammersley sequence
-:param real lBound: lower boundary
-:param real uBound: upper boundary
-:return: sequence of hammersley
-:rtype:list
-'''
-import numpy as np
-from Hammersley_sampling_test import hammersley
-def hammersley_seq_format(lBound,uBound,points=16):
-    ratio = (uBound - lBound) / 1.0
-    seq = []
-    for i in range(0,points+1):
-        val = hammersley(i)[0]*ratio + lBound
-        seq.append(val)
-    return seq
-
-'''
-2. Van der Corput sequence.
-:param int n_sample: number of element of the sequence.
-:param int base: base of the sequence.
-:return: sequence of Van der Corput.
-:rtype: list (n_samples,)
-'''
-def van_der_corput(lBound,uBound,n_sample, base=2):
-    sequence = []
-    ratio = (uBound - lBound) / 1.0
-    for i in range(n_sample):
-        n_th_number, denom = 0., 1.
-        while i > 0:
-            i, remainder = divmod(i, base)
-            denom *= base
-            n_th_number += remainder / denom
-        sequence.append(n_th_number*ratio+lBound)
-    return sequence
+from Sampling import van_der_corput,halton_sequence,hammersley_seq,latin_random_sequence
 
 '''
 Generate model values
@@ -381,7 +347,19 @@ def coordinate_search(cycles,startPoint, lowerBound, upperBound):
             # update boundary
             lb,ub = update_boundary(lowerBound,upperBound,startPoint,indexOfVar,radius)
             # generate sampling points sequence
-            Xdata = van_der_corput(lb[indexOfVar],ub[indexOfVar],20)
+
+            # The Hammersley Quasi Monte Carlo (QMC) Sequence
+            # Xdata = hammersley_seq(lb[indexOfVar],ub[indexOfVar])
+            
+            # The van der Corput Quasi Monte Carlo (QMC) sequence
+            # Xdata = van_der_corput(lb[indexOfVar],ub[indexOfVar],20)
+
+            # The Halton Quasi Monte Carlo (QMC) Sequence
+            # Xdata = halton_sequence(lb[indexOfVar],ub[indexOfVar],20)
+
+            # Latin Random Squares in M dimensions
+            Xdata = latin_random_sequence(lb[indexOfVar],ub[indexOfVar],20,1,1)
+
             # generate black box model values
             ydata = generate_bbox_values(compileFile,startPoint,Xdata,indexOfVar)
             # call alamopy to generate expression and labels of variables
