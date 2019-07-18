@@ -15,7 +15,7 @@ import numpy as np
 
     Output, real R(M), the element of the sequence with index I.
 '''
-def hammersley ( i, m, n ):
+def hammersley ( i, m, n):
   i = int ( i )
   t = np.ones ( m - 1 )
   t = i * t
@@ -42,13 +42,13 @@ def hammersley ( i, m, n ):
                 cover the range of 1 completely
 '''
 
-def hammersley_seq(lBound,uBound,points=16):
+def hammersley_sequence(lBound,uBound,points):
     ratio = (uBound - lBound) / 1.0
     seq = []
     for i in range(0,points+1):
-        val = hammersley(i)[0]*ratio + lBound
+        val = hammersley(i,1,16)[0]*ratio + lBound
         seq.append(val)
-    return seq
+    return seq,points
 
 '''
 2. Van der Corput sequence.
@@ -57,7 +57,7 @@ def hammersley_seq(lBound,uBound,points=16):
 :return: sequence of Van der Corput.
 :rtype: list (n_samples,)
 '''
-def van_der_corput(lBound,uBound,n_sample, base=2):
+def van_der_corput(lBound,uBound,n_sample, base):
     sequence = []
     ratio = (uBound - lBound) / 1.0
     for i in range(n_sample):
@@ -67,7 +67,7 @@ def van_der_corput(lBound,uBound,n_sample, base=2):
             denom *= base
             n_th_number += remainder / denom
         sequence.append(n_th_number*ratio+lBound)
-    return sequence
+    return sequence,n_sample
 
 '''
 3. The Halton Quasi Monte Carlo (QMC) Sequence
@@ -81,7 +81,7 @@ Input, integer M, the spatial dimension.
 
 Output, real R(M), the element of the sequence with index I.
 '''
-def halton (i, m=1):
+def halton (i, m):
     i = int (i)
     t = np.ones ( m )
     t = i * t
@@ -105,8 +105,8 @@ def halton (i, m=1):
 '''
 def halton_sequence(lowerBound,upperBound,i):
     ratio = (upperBound - lowerBound)/1.0
-    seq = [(halton(num)[0]*ratio+lowerBound) for num in range(i)]
-    return seq
+    seq = [(halton(num,1)[0]*ratio+lowerBound) for num in range(i)]
+    return seq,i
 
 '''
 4. Latin Random Squares in M dimensions
@@ -122,7 +122,7 @@ def latin_random_sequence(lowerBound,upperBound,i,dim,seed):
     ratio = (upperBound-lowerBound)/1.0
     xdata,_ = latin_random(dim,i,seed)
     seq = [num*ratio+lowerBound for num in xdata]
-    return seq[0]
+    return seq[0],i
 
 def latin_random ( dim_num, point_num, seed ):
     '''

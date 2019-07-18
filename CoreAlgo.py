@@ -59,7 +59,7 @@ def read_datafile(filename):
     return numOfVar,lowBound,upBound,startPoint
 
 # Sampling
-from Sampling import van_der_corput,halton_sequence,hammersley_seq,latin_random_sequence
+from Sampling import van_der_corput,halton_sequence,hammersley_sequence,latin_random_sequence
 
 '''
 Generate model values
@@ -281,6 +281,8 @@ def make_plot(values, calls, name):
     plt.plot(calls, values, '-o')
     plt.xlabel("Number of calls")
     plt.ylabel("Optimal values")
+    for x, y in zip(calls, values):
+	    plt.text(x, y+0.3, '%.5f'%y, ha='center', va='bottom', fontsize=10.5)
     plt.title(name)
     plt.savefig("plots\\"+name+".png")
     print("Plot of model "+ name +" is saved")
@@ -349,16 +351,16 @@ def coordinate_search(cycles,startPoint, lowerBound, upperBound):
             # generate sampling points sequence
 
             # The Hammersley Quasi Monte Carlo (QMC) Sequence
-            # Xdata = hammersley_seq(lb[indexOfVar],ub[indexOfVar])
+            # Xdata,num = hammersley_sequence(lb[indexOfVar],ub[indexOfVar],16)
             
             # The van der Corput Quasi Monte Carlo (QMC) sequence
-            # Xdata = van_der_corput(lb[indexOfVar],ub[indexOfVar],20)
+            Xdata,num = van_der_corput(lb[indexOfVar],ub[indexOfVar],20,2)
 
             # The Halton Quasi Monte Carlo (QMC) Sequence
-            # Xdata = halton_sequence(lb[indexOfVar],ub[indexOfVar],20)
+            # Xdata,num = halton_sequence(lb[indexOfVar],ub[indexOfVar],20)
 
             # Latin Random Squares in M dimensions
-            Xdata = latin_random_sequence(lb[indexOfVar],ub[indexOfVar],20,1,1)
+            # Xdata,num = latin_random_sequence(lb[indexOfVar],ub[indexOfVar],20,1,1)
 
             # generate black box model values
             ydata = generate_bbox_values(compileFile,startPoint,Xdata,indexOfVar)
@@ -370,7 +372,7 @@ def coordinate_search(cycles,startPoint, lowerBound, upperBound):
             # check the qualification of regression
             box_val = check_bbox_optimal(compileFile,optimal_point)
             # update counter & counter list
-            counter += 20
+            counter += num
             # update flag status
             flag = update_status(optimal_val,box_val,optimal_point,startPoint,indexOfVar,obj_lst,counter,counter_lst)
             if(flag == "end"):

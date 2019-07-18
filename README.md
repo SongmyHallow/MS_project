@@ -85,4 +85,5 @@ UPDATE LOG:
     a. Halton
     b. Van der corput
     c. Hammersley
-    d. Latin random
+    d. Latin random‘
+2. Halton sequence has problems in high dimensions
