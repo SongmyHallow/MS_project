@@ -57,6 +57,20 @@ def read_datafile(filename):
     print("Upper Boundary: ",upBound)
     print("Starting point is: ",startPoint)
     return numOfVar,lowBound,upBound,startPoint
+'''
+Generate multiple starting points based on boundaries
+:param list lowerBound
+:param list upperBound
+:param int num: number of points
+'''
+
+import numpy as np
+def generate_starting_points(lowerBound,upperBound,num):
+    points = []
+    for i in range(len(lowerBound)):
+        arr = np.linspace(lowerBound[i],upperBound[i],num=num+2)
+        points.append(arr)
+    return np.transpose(points)[1:-1]
 
 # Sampling
 from Sampling import van_der_corput,halton_sequence,hammersley_sequence,latin_random_sequence
@@ -228,12 +242,12 @@ def update_status(optimal_val,box_val,optimal_point,startPoint,index,obj_lst,cou
         if(len(obj_lst)<1):
             obj_lst.append(box_val)
             counter_lst.append(counter)
-            print("New optimal value is found: ",box_val)
+            print("New optimal value is found: ",box_val," at:",optimal_point)
         else:
             if(obj_lst[-1] > box_val):
                 obj_lst.append(box_val)
                 counter_lst.append(counter)
-                print("New optimal value is found: ",box_val)
+                print("New optimal value is found: ",box_val," at:",optimal_point)
         if(len(obj_lst)>1 and (obj_lst[-2]-obj_lst[-1]<1e-5)):
             flag = "end"
     
@@ -355,7 +369,6 @@ def coordinate_search(cycles,startPoint, lowerBound, upperBound):
             
             # The van der Corput Quasi Monte Carlo (QMC) sequence
             Xdata,num = van_der_corput(lb[indexOfVar],ub[indexOfVar],20,2)
-
             # The Halton Quasi Monte Carlo (QMC) Sequence
             # Xdata,num = halton_sequence(lb[indexOfVar],ub[indexOfVar],20)
 
