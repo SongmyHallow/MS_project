@@ -19,7 +19,6 @@ import os
 import sys
 from pyomo.environ import *
 from pyomo.opt import SolverFactory
-
 """
 ================================================================================
 support functions
@@ -61,6 +60,10 @@ def genBlackBoxValuesSeq(filename,point,sequence,index):
         output_values.append(readOutput(output_filename))
     return output_values
 
+def boundary_dic(labels,lb,ub):
+    lowerBound = {labels[0]:lb}
+    upperBound = {labels[0]:ub}
+    return lowerBound,upperBound
 '''
 Regression, use alamopy package to get the numerical expression
 :param list input_values: values of variables
@@ -69,9 +72,9 @@ Regression, use alamopy package to get the numerical expression
 :param real upperBound: upper boundary of specific variable
 :ruturn: labels of variables and expression of the function
 '''
-def callAlamopy(input_values,output_values,lowerBound,upperBound):
+def callAlamopy(input_values,output_values,lowBound,upBound):
     import alamopy
-    alamo_result = alamopy.alamo(xdata=input_values,zdata=output_values,xmin=lowerBound,xmax=upperBound,monomialpower=(1,2),multi2power=(1,2))
+    alamo_result = alamopy.alamo(xdata=input_values,zdata=output_values,xmin=lowBound,xmax=upBound,monomialpower=(1,2))
 #     print("===============================================================")
 #     print("ALAMO results")
 #     print("===============================================================")
@@ -83,7 +86,7 @@ def callAlamopy(input_values,output_values,lowerBound,upperBound):
     labels = alamo_result['xlabels']
     expr = alamo_result['f(model)']
     return labels,expr
-
+  
 """
 ================================================================================
 definition of the core class
@@ -94,7 +97,9 @@ class blackBox(object):
     def __init__(self,name=None,cycles=None,radius=None,
                  numOfVar=None,
                  lowBound=[],upBound=[],
-                 iniStart=[],backUpStart=[],actualStart=[]):
+                 iniStart=[],backUpStart=[],actualStart=[],
+                 minimalCoordinate=[],minimalValue=[],
+                 totalCalls=0,calls=[]):
         self.name = name
         self.cycles = cycles
         self.radius = radius
@@ -104,6 +109,11 @@ class blackBox(object):
         self.iniStart = iniStart
         self.backUpStart = backUpStart
         self.actualStart = actualStart
+        self.totalCalls = totalCalls
+        self.calls = calls
+
+        self.minimalCoordinate = minimalCoordinate
+        self.minimalValue = minimalValue
 
     def clear(self):
         self.name=None
@@ -126,6 +136,14 @@ class blackBox(object):
         print("Initial starting point from data file:",self.iniStart)
         print("Back up starting points:",self.backUpStart)
         print("Actual starting point is:",self.actualStart)
+
+    def getCalls(self):
+        print("Total call:",self.totalCalls)
+        print("Calls list:",self.calls)
+
+    def getResult(self):
+        print("Optimal values:",self.minimalValue)
+        print("Optimal points:",self.minimalCoordinate)
         
     '''
     Compile .c file
@@ -139,7 +157,6 @@ class blackBox(object):
             print("Compilation finished")
         else:
             print("Compilation failed")
-    
     
     '''
     Read boundaries, starting points and number of variables
@@ -161,6 +178,7 @@ class blackBox(object):
         for k in lines[3].split():
             self.iniStart.append(float(k.strip()))
         infile.close()
+
     '''
     Generate starting points that are ready to be chose
     '''
@@ -168,7 +186,7 @@ class blackBox(object):
         import numpy as np    
         # TODO: Finally I want to generate 10 backup starting points, which can be modifed later
         for i in range(len(self.lowBound)):
-            arr = np.linspace(self.lowBound[i],self.upBound[0],12)
+            arr = np.linspace(self.lowBound[i],self.upBound[0],22)
             self.backUpStart.append(arr)
         self.backUpStart = np.transpose(self.backUpStart)[1:-1]
     
@@ -176,15 +194,21 @@ class blackBox(object):
     Choose a starting point from backup and check if it is valid,
     otherwise remove that point from list and choose another one
     '''
-    def genActualStart(self):
+    def genActualStart(self,method):
         import random
-        self.actualStart = random.choice(self.backUpStart)
-        output = genBlackBoxValue(self.name,self.actualStart)
-        while(output == "INF"):
-            self.backUpStart.remove(self.actualStart)
+        if(method=="random"):
             self.actualStart = random.choice(self.backUpStart)
             output = genBlackBoxValue(self.name,self.actualStart)
+            while(output == "INF"):
+                self.backUpStart.remove(self.actualStart)
+                self.actualStart = random.choice(self.backUpStart)
+                output = genBlackBoxValue(self.name,self.actualStart)
+        elif(method=="origin"):
+            self.actualStart = self.iniStart
 
+    '''
+    Generate the boundary of specific variable at current iteration
+    '''
     def genVariableBound(self,index):
         if(self.actualStart[index]-self.radius<self.lowBound[index]):
             lb = self.lowBound[index]
@@ -197,11 +221,38 @@ class blackBox(object):
             ub = self.actualStart[index]+self.radius
         return lb,ub
     
+    '''
+    Generate sampling points
+    1. The Halton Quasi Monte Carlo (QMC) Sequence
+    2. The Hammersley Quasi Monte Carlo (QMC) Sequence
+    3. The van der Corput Quasi Monte Carlo (QMC) sequence
+    4. Latin Random Squares in M dimensions
+    '''
+    def genSamplePoints(self,method,num,lowBound,upBound):
+        from Sampling import halton_sequence,hammersley_sequence,van_der_corput,latin_random_sequence
+        if(method=="halton"):
+            Xdata,_ = halton_sequence(lowBound,upBound,num)
+        elif(method=="hammersley"):
+            Xdata,_ = hammersley_sequence(lowBound,upBound,num)
+        elif(method=="vander"):
+            Xdata,_=van_der_corput(lowBound,upBound,num,2)
+        elif(method=="latin"):
+            Xdata,_ = latin_random_sequence(lowBound,upBound,num,1,1)
+        self.totalCalls+=num
+        return Xdata
 
-    def call_baron(labels,expr,lowerBound,upperBound,startPoint,index):
-
-        model = ConcreteModel(name='cycle')
-        lBound_dic,uBound_dic = boundary_dic(labels,startPoint,index,lowerBound,upperBound)
+    '''
+    Optimization, call baron by Pyomo to get optimal solution
+    :param labels: labels of variables generated by alamopy
+    :param expr: numerical expression generated by alamopy
+    :param lowerBound
+    :Param upperBound
+    :param list startPoint: list of coordinate of the point
+    :param integer index: index of the specific variable
+    '''
+    def callBaron(self,labels,expr,lowBound,upBound,index):
+        model = ConcreteModel(name='blackbox')
+        lBound_dic,uBound_dic = boundary_dic(labels,lowBound,upBound)
         def fb(model,i):
             return (lBound_dic[i],uBound_dic[i])
         model.A = Set(initialize=labels)
@@ -215,34 +266,133 @@ class blackBox(object):
         model.obj = Objective(rule=objrule,sense=minimize)
         opt = SolverFactory('baron')
         solution = opt.solve(model)
-    #     solution.write()
-    #     model.pprint()
-    #     model.display()
-        
-        obj_point = startPoint
+        # solution.write()
+        # model.pprint()
+        # model.display()
+        tempPoint = self.actualStart[:]
         try:
-            obj_point[index] = value(model.x[labels[0]])
+            tempPoint[index] = value(model.x[labels[0]])
             # print(value(model.x[labels[index]]))
         except:
-            obj_point = startPoint
-        obj_value = value(model.obj)
-        return obj_point,obj_value
+            pass
+        tempMinimal = value(model.obj)
+        return tempPoint,tempMinimal
+
+    '''
+    Update the flag indicating the accuracy of surrogate model
+    '''
+    def updateFlag(self,tempPoint,tempMinimal):
+        boxVal = genBlackBoxValue(self.name,tempPoint)
+        print("Box value:",boxVal)
+        print("Temp minimal value:",tempMinimal)
+
+        if(boxVal==0):
+            boxVal+=1e-5
+
+        ratio = tempMinimal/boxVal
+        if(ratio<=1.15 and ratio>=0.85):
+            if(len(self.minimalValue)<1 or boxVal<self.minimalValue[-1]):
+                self.actualStart = tempPoint
+                self.minimalValue.append(boxVal)
+                self.minimalCoordinate.append(tempPoint)
+                self.calls.append(self.totalCalls)
+            self.radius *= 1.5
+            return True
+        else:
+            self.radius *= 0.8
+            return False
     
+    def checkEnd(self):
+        if(len(self.minimalValue)>1 and self.minimalValue[-2]-self.minimalValue[-1]<1e-5):
+            return True
+        else:
+            return False
+
+    '''
+    make a plot, optimal values vs calls of model
+    :param list values
+    :param list calls
+    :param string name: name of model
+    '''
+    def makePlot(self):
+        import matplotlib.pyplot as plt
+        self.getResult()
+        self.getCalls()
+        plt.plot(self.calls, self.minimalValue, '-o')
+        plt.xlabel("Number of calls")
+        plt.ylabel("Optimal values")
+        for x, y in zip(self.calls, self.minimalValue):
+            plt.text(x, y+0.3, '%.5f'%y, ha='center', va='bottom', fontsize=10.5)
+        plt.title(self.name)
+        plt.savefig("plots\\"+self.name+".png")
+        print("Plot of model "+ self.name +" is saved")
+
+    '''
+    Write data into csv file
+    '''
+    def make_csv(name,values,calls,time,points,cycle):
+        from pandas import DataFrame
+        import csv
+        csvfile = open('experimentData.csv','a+',newline='')
+        fieldsnames = ['model_name','time','cycle','values','calls','point']
+        # writer = csv.writer(csvfile,delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        writer = csv.DictWriter(csvfile,fieldnames=fieldsnames)
+        # values = list_int2str(values)
+        # calls = list_int2str(calls)
+        # writer.writerow([name,calls[-1]]+values)
+        if(len(points)>0):
+            writer.writerow({
+                'model_name':name,
+                'time':time,
+                'cycle':cycle,
+                'values':values[-1],
+                'calls':calls[-1],
+                'point':points[-1]
+            })
+        else:
+            writer.writerow({
+                'model_name':name,
+                'time':time,
+                'cycle':cycle,
+                'values':values[-1],
+                'calls':calls[-1]
+            })
+        csvfile.close()
+    
+    '''
+    Algorithms
+    '''
+    '''
+    1. Coordinate search
+    :param integer cycles: execution loops
+    :param list startPoint: 
+    '''
     def coordinateSearch(self):
         import random
-        from Sampling import halton_sequence,hammersley_sequence,van_der_corput,latin_random_sequence
         for cycle in range(self.cycles):
             print("The No.",cycle+1,"Cycle")
             shuffleOrder = list(range(self.numOfVar))
             random.shuffle(shuffleOrder)
             for indexOfVar in shuffleOrder:
-                lb,ub = self.genVariableBound(indexOfVar)
-                print(indexOfVar,shuffleOrder)
-                Xdata,_ = van_der_corput(lb,ub,20,2)
-                ydata = genBlackBoxValuesSeq(self.name,self.actualStart,Xdata,indexOfVar)
-                print(ydata)
-                labels,expr = callAlamopy(Xdata,ydata,lb,ub)
-                print(labels,expr)
+                print("The No.",indexOfVar,"Variable")
+                
+                flag = False
+                numOfSample = 20
+                while(flag==False):
+                    lb,ub = self.genVariableBound(indexOfVar)
+                    Xdata = self.genSamplePoints("vander",numOfSample,lb,ub)
+                    ydata = genBlackBoxValuesSeq(self.name,self.actualStart,Xdata,indexOfVar)
+                    labels,expr = callAlamopy(Xdata,ydata,lb,ub)
+                    tempPoint,tempMinimal = self.callBaron(labels,expr,lb,ub,indexOfVar)
+                    flag = self.updateFlag(tempPoint,tempMinimal)
+                    print("Flag",flag)
+
+                    if(flag==False):
+                        numOfSample += 10
+                    else:
+                        numOfSample -=5
+            if(self.checkEnd()==True):
+                    return
 
 """
 ================================================================================
@@ -259,8 +409,8 @@ def main():
     box.compileCode()
     box.readDataFile()
     box.genBackupStart()
-    box.genActualStart()
+    box.genActualStart("random")
     box.coordinateSearch()
-    box.showParameter()       
-
+    box.showParameter()
+    box.makePlot()
 main()
