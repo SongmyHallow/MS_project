@@ -93,13 +93,14 @@ definition of the core class
 ================================================================================
 """
 class blackBox(object):
-    radius = 0.5
+    offset = 0
     def __init__(self,name=None,cycles=None,radius=None,
                  numOfVar=None,
                  lowBound=[],upBound=[],
                  iniStart=[],backUpStart=[],actualStart=[],
                  minimalCoordinate=[],minimalValue=[],
-                 totalCalls=0,calls=[]):
+                 totalCalls=0,calls=[],
+                 tempLB = 0, tempUB = 0):
         self.name = name
         self.cycles = cycles
         self.radius = radius
@@ -114,6 +115,9 @@ class blackBox(object):
 
         self.minimalCoordinate = minimalCoordinate
         self.minimalValue = minimalValue
+
+        self.tempLB = tempLB
+        self.tempUB = tempUB        
 
     def clear(self):
         self.name=None
@@ -210,6 +214,7 @@ class blackBox(object):
     Generate the boundary of specific variable at current iteration
     '''
     def genVariableBound(self,index):
+        import random
         if(self.actualStart[index]-self.radius<self.lowBound[index]):
             lb = self.lowBound[index]
         else:
@@ -219,6 +224,10 @@ class blackBox(object):
             ub = self.upBound[index]
         else:
             ub = self.actualStart[index]+self.radius
+
+        self.tempLB = lb
+        self.tempUB = ub
+        offset = random.uniform(lb,ub)
         return lb,ub
     
     '''
@@ -227,9 +236,21 @@ class blackBox(object):
     2. The Hammersley Quasi Monte Carlo (QMC) Sequence
     3. The van der Corput Quasi Monte Carlo (QMC) sequence
     4. Latin Random Squares in M dimensions
+    5. Adaptive sampling from package 'adaptive'
     '''
+    def f(self,x,offset=offset,wait=True):
+        from time import sleep
+        import random
+        
+        if wait:
+            sleep(random.random()/10)
+        sol = genBlackBoxValue(self.name,(x,0.5))
+        return sol
+
     def genSamplePoints(self,method,num,lowBound,upBound):
         from Sampling import halton_sequence,hammersley_sequence,van_der_corput,latin_random_sequence
+        from adaptive.learner.learner1D import curvature_loss_function
+        import adaptive
         if(method=="halton"):
             Xdata,_ = halton_sequence(lowBound,upBound,num)
         elif(method=="hammersley"):
@@ -238,6 +259,12 @@ class blackBox(object):
             Xdata,_=van_der_corput(lowBound,upBound,num,2)
         elif(method=="latin"):
             Xdata,_ = latin_random_sequence(lowBound,upBound,num,1,1)
+        elif(method=="adaptive"):
+            curvature_loss = curvature_loss_function()
+            learner = adaptive.Learner1D(self.f, (lowBound,upBound), loss_per_interval=curvature_loss)
+            npoints_goal = lambda l: l.npoints >= num
+            adaptive.runner.simple(learner, goal=npoints_goal)
+            Xdata = list(learner.data.keys())
         self.totalCalls+=num
         return Xdata
 
@@ -409,7 +436,7 @@ def main():
     box.compileCode()
     box.readDataFile()
     box.genBackupStart()
-    box.genActualStart("random")
+    box.genActualStart("adaptive")
     box.coordinateSearch()
     box.showParameter()
     box.makePlot()
