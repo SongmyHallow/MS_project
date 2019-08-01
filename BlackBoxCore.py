@@ -93,14 +93,12 @@ definition of the core class
 ================================================================================
 """
 class blackBox(object):
-    offset = 0
-    def __init__(self,name=None,cycles=None,radius=None,
-                 numOfVar=None,
+    def __init__(self,name=None,cycles=0,radius=0,
+                 numOfVar=0,
                  lowBound=[],upBound=[],
                  iniStart=[],backUpStart=[],actualStart=[],
-                 minimalCoordinate=[],minimalValue=[],
-                 totalCalls=0,calls=[],
-                 tempLB = 0, tempUB = 0):
+                 minimalCoordinate=[],minimalValue=[],allValue=[],
+                 totalCalls=0,calls=[],allCalls=[]):
         self.name = name
         self.cycles = cycles
         self.radius = radius
@@ -112,18 +110,17 @@ class blackBox(object):
         self.actualStart = actualStart
         self.totalCalls = totalCalls
         self.calls = calls
+        self.allCalls = allCalls
 
         self.minimalCoordinate = minimalCoordinate
-        self.minimalValue = minimalValue
-
-        self.tempLB = tempLB
-        self.tempUB = tempUB        
+        self.minimalValue = minimalValue  
+        self.allValue = allValue
 
     def clear(self):
         self.name=None
-        self.cycles=None
-        self.radius=None
-        self.numOfVar = None
+        self.cycles=0
+        self.radius=0
+        self.numOfVar = 0
         self.lowBound = []
         self.upBound = []
         self.iniStart = []
@@ -190,7 +187,7 @@ class blackBox(object):
         import numpy as np    
         # TODO: Finally I want to generate 10 backup starting points, which can be modifed later
         for i in range(len(self.lowBound)):
-            arr = np.linspace(self.lowBound[i],self.upBound[0],22)
+            arr = np.linspace(self.lowBound[i],self.upBound[0],17)
             self.backUpStart.append(arr)
         self.backUpStart = np.transpose(self.backUpStart)[1:-1]
     
@@ -215,6 +212,7 @@ class blackBox(object):
     '''
     def genVariableBound(self,index):
         import random
+
         if(self.actualStart[index]-self.radius<self.lowBound[index]):
             lb = self.lowBound[index]
         else:
@@ -225,9 +223,9 @@ class blackBox(object):
         else:
             ub = self.actualStart[index]+self.radius
 
-        self.tempLB = lb
-        self.tempUB = ub
-        offset = random.uniform(lb,ub)
+        # self.tempLB = lb
+        # self.tempUB = ub
+        # offset = random.uniform(lb,ub)
         return lb,ub
     
     '''
@@ -238,19 +236,8 @@ class blackBox(object):
     4. Latin Random Squares in M dimensions
     5. Adaptive sampling from package 'adaptive'
     '''
-    def f(self,x,offset=offset,wait=True):
-        from time import sleep
-        import random
-        
-        if wait:
-            sleep(random.random()/10)
-        sol = genBlackBoxValue(self.name,(x,0.5))
-        return sol
-
     def genSamplePoints(self,method,num,lowBound,upBound):
         from Sampling import halton_sequence,hammersley_sequence,van_der_corput,latin_random_sequence
-        from adaptive.learner.learner1D import curvature_loss_function
-        import adaptive
         if(method=="halton"):
             Xdata,_ = halton_sequence(lowBound,upBound,num)
         elif(method=="hammersley"):
@@ -259,12 +246,6 @@ class blackBox(object):
             Xdata,_=van_der_corput(lowBound,upBound,num,2)
         elif(method=="latin"):
             Xdata,_ = latin_random_sequence(lowBound,upBound,num,1,1)
-        elif(method=="adaptive"):
-            curvature_loss = curvature_loss_function()
-            learner = adaptive.Learner1D(self.f, (lowBound,upBound), loss_per_interval=curvature_loss)
-            npoints_goal = lambda l: l.npoints >= num
-            adaptive.runner.simple(learner, goal=npoints_goal)
-            Xdata = list(learner.data.keys())
         self.totalCalls+=num
         return Xdata
 
@@ -317,17 +298,17 @@ class blackBox(object):
             boxVal+=1e-5
 
         ratio = tempMinimal/boxVal
-        if(ratio<=1.15 and ratio>=0.85):
+        if(ratio<=1.1 and ratio>=0.9):
             if(len(self.minimalValue)<1 or boxVal<self.minimalValue[-1]):
                 self.actualStart = tempPoint
                 self.minimalValue.append(boxVal)
                 self.minimalCoordinate.append(tempPoint)
                 self.calls.append(self.totalCalls)
-            self.radius *= 1.5
-            return True
+            self.radius *= 2.0
+            return True,boxVal
         else:
-            self.radius *= 0.8
-            return False
+            self.radius *= 0.85
+            return False,boxVal
     
     def checkEnd(self):
         if(len(self.minimalValue)>1 and self.minimalValue[-2]-self.minimalValue[-1]<1e-5):
@@ -345,10 +326,10 @@ class blackBox(object):
         import matplotlib.pyplot as plt
         self.getResult()
         self.getCalls()
-        plt.plot(self.calls, self.minimalValue, '-o')
+        plt.plot(self.allCalls, self.allValue, '-o')
         plt.xlabel("Number of calls")
         plt.ylabel("Optimal values")
-        for x, y in zip(self.calls, self.minimalValue):
+        for x, y in zip(self.allCalls, self.allValue):
             plt.text(x, y+0.3, '%.5f'%y, ha='center', va='bottom', fontsize=10.5)
         plt.title(self.name)
         plt.savefig("plots\\"+self.name+".png")
@@ -411,13 +392,15 @@ class blackBox(object):
                     ydata = genBlackBoxValuesSeq(self.name,self.actualStart,Xdata,indexOfVar)
                     labels,expr = callAlamopy(Xdata,ydata,lb,ub)
                     tempPoint,tempMinimal = self.callBaron(labels,expr,lb,ub,indexOfVar)
-                    flag = self.updateFlag(tempPoint,tempMinimal)
+                    flag,boxVal = self.updateFlag(tempPoint,tempMinimal)
                     print("Flag",flag)
 
                     if(flag==False):
                         numOfSample += 10
                     else:
                         numOfSample -=5
+                        self.allCalls.append(self.totalCalls)
+                        self.allValue.append(boxVal)
             if(self.checkEnd()==True):
                     return
 
@@ -436,8 +419,12 @@ def main():
     box.compileCode()
     box.readDataFile()
     box.genBackupStart()
-    box.genActualStart("adaptive")
+    box.genActualStart("random")
+    # for start in box.backUpStart:
+        # box.actualStart = start
     box.coordinateSearch()
-    box.showParameter()
+    # box.showParameter()
+    # box.getResult()
     box.makePlot()
+
 main()
