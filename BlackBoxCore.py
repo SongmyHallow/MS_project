@@ -1,7 +1,7 @@
 '''
 MS project algorithm
 Muyi Song (muyis)
-Latest update: 7/25/2019
+Latest update: 8/1/2019
 
 command line syntax: python BlackBox.py (name of model file) (number of iterations)
                                             sys.argv[1]             sys.argv[2]
