@@ -6,15 +6,31 @@
 \usepackage{amssymb}
 \usepackage{enumitem}
 \usepackage{multirow}
-
-\title{Integrated machine learning and optimization in Python}
-\author{Muyi Song}
-\date{August 2019}
-
 \begin{document}
-\maketitle
+% Cover Page
+\begin{titlepage}
+  \vbox{}
+  \begin{center}
+  \includegraphics[width=0.4\textwidth]{logo.png}\\[2.5cm]
+  \end{center}
 
-\tableofcontents
+  \begin{center}
+  {\large\textbf{Integrated machine learning \vspace{7.5pt} and optimization in Python}}\\[1.5cm]
+  \large{Master of Science Research Project}
+  \begin{center}\large{August 2019}\end{center}
+  \vbox{}
+  \begin{center}
+    \large{Muyi Song}
+    \large{Department of Chemical Engineering}
+  \end{center}
+  \end{center}
+\end{titlepage}
+% =================================================================
+\begin{center}
+  \tableofcontents
+\end{center}
+
+\newpage
 \section{Introduction}
 
 \section{Black Box Optimization}
@@ -30,10 +46,25 @@
   \hline
   \hangafter=1
   \hangindent 2em
-  \textbf{article} for articles in scientific journals, presentations, short reports,\\ program documentation, invitations,...\\
-  \textbf{report} for longer reports containing several chapters, small books, \\PhD thesises,...\\
-  \textbf{book} for real books\\
-  \textbf{slide} for sldies. 
+  Read boundaires of variables $x^{0}\in \Re ^{n}$;\\
+  Initialize starting point;\\
+  Initialize radius $r$ and size of sampling points $num$;\\
+  initialize a blank list to store optimal values;\\
+  \textbf{repeat}\\
+  \quad shuffle the order of variables;\\
+  \quad\textbf{for} index $i_{1}$ to $i_k$ $\in {1,2\dots n}$\\
+  \qquad\textbf{repeat}\\
+  \qquad\quad Sampling along single direction within range $[x_{i_k}-r,x_{i_k}+r]$\\
+  \qquad\quad Call Alamopy to get the surrogate model based on sampling data points;\\
+  \qquad\quad Call Baron to get the optimal point of surrogate model;\\
+  \qquad\quad \textbf{if} the difference between actual and predicted values of minima is big:\\
+  \qquad\quad\quad decrease $r$; increase $num$;\\
+  \qquad\quad \textbf{else}:\\
+  \qquad\quad\quad increase $r$; decrease $num$;\\
+  \qquad\textbf{until} the actual value $\approx$ predicted value obtained by Baron;\\
+  \qquad update $x_{i_k}$ with new optimal point; append optimal value to solution list;\\
+  \textbf{until} termination is satisfied;\\
+  \hline
 \end{tabular}  
 \end{center}
 
