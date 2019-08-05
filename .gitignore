@@ -1,5 +1,4 @@
 *.sh
-*.png
 input.in
 output.out
 # Ignore the Reference directory
