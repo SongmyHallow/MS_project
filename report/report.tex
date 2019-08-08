@@ -1,4 +1,5 @@
 \documentclass{article}
+\usepackage[utf8]{inputenc}
 \usepackage{url}
 \usepackage{hyperref}
 \usepackage{graphicx}
@@ -40,33 +41,33 @@
 \section{Alamo and Baron}
 
 \section{Pseudo Code}
+\subsection{Algorithm}
 \begin{center}
 \textbf{Table}~~Pseudo Code of Algorithm
 \begin{tabular}{lp{3cm}}
   \hline
   \hangafter=1
   \hangindent 2em
-  Read boundaires of variables $x^{0}\in \Re ^{n}$;\\
-  Initialize starting point;\\
-  Initialize radius $r$ and size of sampling points $num$;\\
+  Initialize starting point by setting each dimension as $(lb+ub)/2$;\\
+  Initialize radius $r=1.0$ and size of sampling points $num$;\\
   initialize a blank list to store optimal values;\\
-  \textbf{repeat}\\
-  \quad shuffle the order of variables;\\
-  \quad\textbf{for} index $i_{1}$ to $i_k$ $\in {1,2\dots n}$\\
-  \qquad\textbf{repeat}\\
+  \textbf{while}(the actual value $\approx$ predicted value obtained by Baron)\\
+  \quad shuffle the order of dimensions;\\
+  \quad\textbf{for} index $i_{1}$ to $i_k$ $k = 1, \dots ,n$\\
+  \qquad\textbf{while}(termination is satisfied)\\
   \qquad\quad Sampling along single direction within range $[x_{i_k}-r,x_{i_k}+r]$\\
   \qquad\quad Call Alamopy to get the surrogate model based on sampling data points;\\
   \qquad\quad Call Baron to get the optimal point of surrogate model;\\
-  \qquad\quad \textbf{if} the difference between actual and predicted values of minima is big:\\
+  \qquad\quad \textbf{if} the optimal point is accurate:\\
   \qquad\quad\quad decrease $r$; increase $num$;\\
   \qquad\quad \textbf{else}:\\
   \qquad\quad\quad increase $r$; decrease $num$;\\
-  \qquad\textbf{until} the actual value $\approx$ predicted value obtained by Baron;\\
   \qquad update $x_{i_k}$ with new optimal point; append optimal value to solution list;\\
-  \textbf{until} termination is satisfied;\\
   \hline
 \end{tabular}  
 \end{center}
+
+\subsection{Sampling methods}
 
 \section{Results and Discssion}
 

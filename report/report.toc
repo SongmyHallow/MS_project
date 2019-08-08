@@ -1,7 +1,0 @@
-\contentsline {section}{\numberline {1}Introduction}{2}{section.1}% 
-\contentsline {section}{\numberline {2}Black Box Optimization}{2}{section.2}% 
-\contentsline {section}{\numberline {3}Cyclic Coordinate Descent}{2}{section.3}% 
-\contentsline {section}{\numberline {4}Alamo and Baron}{2}{section.4}% 
-\contentsline {section}{\numberline {5}Pseudo Code}{2}{section.5}% 
-\contentsline {section}{\numberline {6}Results and Discssion}{2}{section.6}% 
-\contentsline {section}{Reference}{2}{section.6}% 
