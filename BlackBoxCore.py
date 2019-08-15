@@ -1,7 +1,7 @@
 '''
 MS project algorithm
 Muyi Song (muyis)
-Latest update: 8/1/2019
+Latest update: 8/15/2019
 
 command line syntax: python BlackBox.py (name of model file) (number of iterations)
                                             sys.argv[1]             sys.argv[2]
@@ -10,10 +10,11 @@ sampling methods:
 2. Ver der Corput sequence
 3. Halton sequence
 4. Latin Random
+5. Sobol sequence
 
 search algorithm:
 1. Coordinate search (shuffle the order of variables every iteration)
-=================================================================================
+================================================================================
 '''
 import os
 import sys
@@ -293,6 +294,7 @@ class blackBox(object):
     Update the flag indicating the accuracy of surrogate model
     '''
     def updateFlag(self,tempPoint,tempMinimal):
+        import numpy as np
         boxVal = genBlackBoxValue(self.name,tempPoint)
         print("Box value:",boxVal)
         print("Temp minimal value:",tempMinimal)
@@ -300,17 +302,17 @@ class blackBox(object):
         if(boxVal==0):
             boxVal+=1e-5
 
-        ratio = tempMinimal/boxVal
-        if(ratio<=1.1 and ratio>=0.9):
+        ratio = (tempMinimal-boxVal)/tempMinimal
+        if(ratio<=0.2 and ratio>=-0.2 or (boxVal==0 and ((tempMinimal-boxVal)<=0.2 or (tempMinimal-boxVal>=-0.2)))):
             if(len(self.minimalValue)<1 or boxVal<self.minimalValue[-1]):
                 self.actualStart = tempPoint
                 self.minimalValue.append(boxVal)
                 self.minimalCoordinate.append(tempPoint)
                 self.calls.append(self.totalCalls)
-            self.radius *= 2.0
+            self.radius *= 5.0
             return True,boxVal
         else:
-            self.radius *= 0.85
+            self.radius *= 0.5
             return False,boxVal
     
     def checkEnd(self):
@@ -388,7 +390,7 @@ class blackBox(object):
                 print("The No.",indexOfVar,"Variable")
                 
                 flag = False
-                numOfSample = 20
+                numOfSample = 8
                 while(flag==False):
                     lb,ub = self.genVariableBound(indexOfVar)
                     Xdata = self.genSamplePoints("vander",numOfSample,lb,ub)
@@ -422,12 +424,12 @@ def main():
     box.compileCode()
     box.readDataFile()
     box.genBackupStart()
-    box.genActualStart("random")
+    box.genActualStart("origin")
     # for start in box.backUpStart:
         # box.actualStart = start
     box.coordinateSearch()
     # box.showParameter()
-    # box.getResult()
+    box.getResult()
     box.makePlot()
 
 main()
