@@ -74,7 +74,7 @@ def generate_starting_points(lowerBound,upperBound,num):
 
 # Sampling
 from Sampling import van_der_corput,halton_sequence,hammersley_sequence,latin_random_sequence
-
+import sobol_seq
 '''
 Generate model values
 :param string: name of black box model without extension

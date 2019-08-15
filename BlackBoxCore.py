@@ -238,6 +238,7 @@ class blackBox(object):
     '''
     def genSamplePoints(self,method,num,lowBound,upBound):
         from Sampling import halton_sequence,hammersley_sequence,van_der_corput,latin_random_sequence
+        import sobol_seq
         if(method=="halton"):
             Xdata,_ = halton_sequence(lowBound,upBound,num)
         elif(method=="hammersley"):
@@ -246,6 +247,8 @@ class blackBox(object):
             Xdata,_=van_der_corput(lowBound,upBound,num,2)
         elif(method=="latin"):
             Xdata,_ = latin_random_sequence(lowBound,upBound,num,1,1)
+        elif(method=="sobol"):
+            Xdata = sobol_seq.i4_sobol_generate(1,num)
         self.totalCalls+=num
         return Xdata
 
