@@ -1,0 +1,60 @@
+ ***************************************************************************
+ ALAMO version 2019.1.26. Built: WIN-64 Sat Jan 26 22:11:34 EST 2019
+
+ If you use this software, please cite:
+ Cozad, A., N. V. Sahinidis and D. C. Miller,
+ Automatic Learning of Algebraic Models for Optimization,
+ AIChE Journal, 60, 2211-2227, 2014.
+
+ ALAMO is powered by the BARON software from http://www.minlp.com/
+ ***************************************************************************
+ Licensee: Muyi Song at Carnegie Mellon University, muyis@andrew.cmu.edu.
+ ***************************************************************************
+ Reading input data
+ Checking input consistency and initializing data structures
+ Warning: powers of 1 will be discarded from the set of basis functions.
+ 
+ Step 0: Initializing data set
+ User provided an initial data set of 38 data points
+ We will sample no more data points at this stage
+ ***************************************************************************
+ Iteration 1 (Approx. elapsed time 0.0 s)
+ 
+ Step 1: Model building using BIC
+ 
+ Model building for variable z1
+ ----
+ BIC = -28.2 with z1 = 0.92 * x1^2
+ ----
+ BIC = -52.7 with z1 = 2.0 * x1^2 - 0.71
+ ----
+ BIC = -127. with z1 =  - 0.72 * x1 + 2.3 * x1^2 - 0.77
+ 
+ Calculating quality metrics on observed data set.
+ 
+ Quality metrics for output z1
+ -----------------------------
+ SSE OLR:           1.01
+ SSE:               1.01
+ RMSE:              0.163
+ R2:                0.959
+ R2 adjusted:       0.955
+ Model size:        3
+ BIC:               -127.
+ Cp:                -25.8
+ AICc:              -131.
+ HQC:               -130.
+ MSE:               0.297E-01
+ SSEp:              1.01
+ RIC:               12.8
+ MADp:              0.132E+04
+ 
+ Total execution time 0.16E-01 s
+ Times breakdown
+     OLR time:        0.0 s in 8 ordinary linear regression problem(s)
+     MIP time:        0.0 s in 0 quadratic integer problem(s)
+     Simulation time: 0.0 s to simulate 0 point(s)
+     All other time:  0.16E-01 s in 1 iteration(s)
+ 
+ Normal termination
+ ***************************************************************************

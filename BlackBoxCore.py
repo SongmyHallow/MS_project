@@ -25,6 +25,11 @@ from pyomo.opt import SolverFactory
 support functions
 ================================================================================
 """
+
+'''
+@input: name of c file, sequence of values
+@output: None. 'input.in' will be generated
+'''
 def writeInput(filename,input_values):
     infile = open(filename, 'w')
     for val in input_values:
@@ -94,7 +99,7 @@ definition of the core class
 ================================================================================
 """
 class blackBox(object):
-    def __init__(self,name=None,cycles=0,radius=0,
+    def __init__(self,name=None,cycles=0,radius=[],samples=[],
                  numOfVar=0,
                  lowBound=[],upBound=[],
                  iniStart=[],backUpStart=[],actualStart=[],
@@ -103,6 +108,7 @@ class blackBox(object):
         self.name = name
         self.cycles = cycles
         self.radius = radius
+        self.samples = samples
         self.numOfVar = numOfVar
         self.lowBound = lowBound
         self.upBound = upBound
@@ -120,7 +126,8 @@ class blackBox(object):
     def clear(self):
         self.name=None
         self.cycles=0
-        self.radius=0
+        self.radius=[]
+        self.samples = []
         self.numOfVar = 0
         self.lowBound = []
         self.upBound = []
@@ -214,15 +221,15 @@ class blackBox(object):
     def genVariableBound(self,index):
         import random
 
-        if(self.actualStart[index]-self.radius<self.lowBound[index]):
+        if(self.actualStart[index]-self.radius[index]<self.lowBound[index]):
             lb = self.lowBound[index]
         else:
-            lb = self.actualStart[index]-self.radius
+            lb = self.actualStart[index]-self.radius[index]
         
-        if(self.actualStart[index]+self.radius>self.upBound[index]):
+        if(self.actualStart[index]+self.radius[index]>self.upBound[index]):
             ub = self.upBound[index]
         else:
-            ub = self.actualStart[index]+self.radius
+            ub = self.actualStart[index]+self.radius[index]
 
         # self.tempLB = lb
         # self.tempUB = ub
@@ -293,30 +300,32 @@ class blackBox(object):
     '''
     Update the flag indicating the accuracy of surrogate model
     '''
-    def updateFlag(self,tempPoint,tempMinimal):
+    def updateFlag(self,tempPoint,tempMinimal,indexOfVar):
         import numpy as np
         boxVal = genBlackBoxValue(self.name,tempPoint)
         print("Box value:",boxVal)
         print("Temp minimal value:",tempMinimal)
-
-        if(boxVal==0):
-            boxVal+=1e-5
-
-        ratio = (tempMinimal-boxVal)/tempMinimal
-        if(ratio<=0.2 and ratio>=-0.2 or (boxVal==0 and ((tempMinimal-boxVal)<=0.2 or (tempMinimal-boxVal>=-0.2)))):
+        if(tempMinimal!=0):
+            ratio = (tempMinimal-boxVal)/tempMinimal
+        else:
+            ratio = (boxVal-tempMinimal)/boxVal
+        dif = tempMinimal - boxVal
+        if((ratio<=0.2 and ratio>=-0.2) or (0.0==boxVal and (dif<=0.2 and dif>=-0.2))):
             if(len(self.minimalValue)<1 or boxVal<self.minimalValue[-1]):
                 self.actualStart = tempPoint
                 self.minimalValue.append(boxVal)
                 self.minimalCoordinate.append(tempPoint)
                 self.calls.append(self.totalCalls)
-            self.radius *= 5.0
+            self.radius[indexOfVar] *= 2
+            print("Raidus is increased to: ",self.radius[indexOfVar])
             return True,boxVal
         else:
-            self.radius *= 0.5
+            self.radius[indexOfVar] *= 0.8
+            print("Raidus is decreased to: ",self.radius[indexOfVar])
             return False,boxVal
     
     def checkEnd(self):
-        if(len(self.minimalValue)>1 and self.minimalValue[-2]-self.minimalValue[-1]<1e-5):
+        if(len(self.minimalValue)>1 and self.minimalValue[-2]-self.minimalValue[-1]<1e-4):
             return True
         else:
             return False
@@ -382,32 +391,66 @@ class blackBox(object):
     '''
     def coordinateSearch(self):
         import random
+
+        # the number of sampling
+        ini_sample = 8
+        self.samples = [ini_sample for i in range(self.numOfVar)]
+        ini_radius = 1
+        self.radius = [ini_radius for i in range(self.numOfVar)]
+        print(self.samples, self.radius)
         for cycle in range(self.cycles):
             print("The No.",cycle+1,"Cycle")
+            # shuffle the order of dimension
             shuffleOrder = list(range(self.numOfVar))
-            random.shuffle(shuffleOrder)
+            # random.shuffle(shuffleOrder)
+
             for indexOfVar in shuffleOrder:
-                print("The No.",indexOfVar,"Variable")
-                
+                print("The No.",indexOfVar+1,"Variable")
+                # flag of the quality of solution
                 flag = False
-                numOfSample = 8
+                # if the solution is not valid, then repeat
                 while(flag==False):
+                    # left bound and right bound
                     lb,ub = self.genVariableBound(indexOfVar)
-                    Xdata = self.genSamplePoints("vander",numOfSample,lb,ub)
+                    # sampling between lb and rb
+                    Xdata = self.genSamplePoints("vander",self.samples[indexOfVar],lb,ub)
+                    # get black box values of xdata
                     ydata = genBlackBoxValuesSeq(self.name,self.actualStart,Xdata,indexOfVar)
+                    # surrogate model
                     labels,expr = callAlamopy(Xdata,ydata,lb,ub)
                     tempPoint,tempMinimal = self.callBaron(labels,expr,lb,ub,indexOfVar)
-                    flag,boxVal = self.updateFlag(tempPoint,tempMinimal)
+                    flag,boxVal = self.updateFlag(tempPoint,tempMinimal,indexOfVar)
                     print("Flag",flag)
 
                     if(flag==False):
-                        numOfSample += 10
+                        self.samples[indexOfVar] +=8
                     else:
-                        numOfSample -=5
+                        self.samples[indexOfVar] = int(self.samples[indexOfVar]/2)
                         self.allCalls.append(self.totalCalls)
                         self.allValue.append(boxVal)
             if(self.checkEnd()==True):
                     return
+
+    def coordinateSearchBeta(self):
+
+        samples = [10 for i in range(self.numOfVar)]
+        radiuses = [self.radius in range(self.numOfVar)]
+
+        for cycle in range(self.cycles):
+            print("The No.",cycle+1,"Cycle")
+            for indexOfVar in range(self.numOfVar):
+                print("The No.",indexOfVar+1,"Variable")
+
+                lb,ub = self.genVariableBound(indexOfVar)
+                Xdata = self.genSamplePoints("vander",samples[indexOfVar],lb,ub)
+                ydata = genBlackBoxValuesSeq(self.name, self.actualStart, Xdata, indexOfVar)
+
+                labels, expr = callAlamopy(Xdata, ydata, lb, ub)
+                tempPoint, tempMinimal = self.callBaron(labels,expr, lb, ub, indexOfVar)
+                flag, boxVal = self.updateFlag(tempPoint,tempMinimal,indexOfVar)
+
+                print("Flag: ", flag)
+
 
 """
 ================================================================================
@@ -420,16 +463,14 @@ if __name__ == "__main__":
 
 def main():
     import time
-    box = blackBox(name=fileName,cycles=cycles,radius=1.0)
+    box = blackBox(name=fileName,cycles=cycles)
     box.compileCode()
     box.readDataFile()
     box.genBackupStart()
     box.genActualStart("origin")
-    # for start in box.backUpStart:
-        # box.actualStart = start
     box.coordinateSearch()
     # box.showParameter()
-    box.getResult()
+    # box.getResult()
     box.makePlot()
 
 main()
