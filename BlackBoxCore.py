@@ -305,18 +305,17 @@ class blackBox(object):
         boxVal = genBlackBoxValue(self.name,tempPoint)
         print("Box value:",boxVal)
         print("Temp minimal value:",tempMinimal)
-        if(tempMinimal!=0):
-            ratio = (tempMinimal-boxVal)/tempMinimal
-        else:
-            ratio = (boxVal-tempMinimal)/boxVal
-        dif = tempMinimal - boxVal
-        if((ratio<=0.2 and ratio>=-0.2) or (0.0==boxVal and (dif<=0.2 and dif>=-0.2))):
+        
+        if(boxVal == 0):
+            boxVal += 1e-5
+        ratio = tempMinimal / boxVal
+        if(ratio > 0.5 and ratio < 2):
             if(len(self.minimalValue)<1 or boxVal<self.minimalValue[-1]):
                 self.actualStart = tempPoint
                 self.minimalValue.append(boxVal)
                 self.minimalCoordinate.append(tempPoint)
                 self.calls.append(self.totalCalls)
-            self.radius[indexOfVar] *= 2
+            self.radius[indexOfVar] *= 2.5
             print("Raidus is increased to: ",self.radius[indexOfVar])
             return True,boxVal
         else:
@@ -352,7 +351,7 @@ class blackBox(object):
     '''
     Write data into csv file
     '''
-    def make_csv(name,values,calls,time,points,cycle):
+    def makeCsv(self,time):
         from pandas import DataFrame
         import csv
         csvfile = open('experimentData.csv','a+',newline='')
@@ -362,22 +361,22 @@ class blackBox(object):
         # values = list_int2str(values)
         # calls = list_int2str(calls)
         # writer.writerow([name,calls[-1]]+values)
-        if(len(points)>0):
+        if(len(self.minimalValue)>0):
             writer.writerow({
-                'model_name':name,
+                'model_name':self.name,
                 'time':time,
-                'cycle':cycle,
-                'values':values[-1],
-                'calls':calls[-1],
-                'point':points[-1]
+                'cycle':self.cycles,
+                'values':self.minimalValue[-1],
+                'calls':self.calls[-1],
+                'point':self.minimalCoordinate[-1]
             })
         else:
             writer.writerow({
-                'model_name':name,
+                'model_name':self.name,
                 'time':time,
-                'cycle':cycle,
-                'values':values[-1],
-                'calls':calls[-1]
+                'cycle':self.cycles,
+                'values':None,
+                'calls': self.totalCalls
             })
         csvfile.close()
     
@@ -425,16 +424,18 @@ class blackBox(object):
                     if(flag==False):
                         self.samples[indexOfVar] +=8
                     else:
-                        self.samples[indexOfVar] = int(self.samples[indexOfVar]/2)
+                        self.samples[indexOfVar] = int(self.samples[indexOfVar]*0.8)
                         self.allCalls.append(self.totalCalls)
                         self.allValue.append(boxVal)
             if(self.checkEnd()==True):
                     return
 
     def coordinateSearchBeta(self):
-
-        samples = [10 for i in range(self.numOfVar)]
-        radiuses = [self.radius in range(self.numOfVar)]
+        # Initialization
+        ini_sample = 8
+        self.samples = [ini_sample for i in range(self.numOfVar)]
+        ini_radius = 1
+        self.radius = [ini_radius for i in range(self.numOfVar)]
 
         for cycle in range(self.cycles):
             print("The No.",cycle+1,"Cycle")
@@ -442,7 +443,7 @@ class blackBox(object):
                 print("The No.",indexOfVar+1,"Variable")
 
                 lb,ub = self.genVariableBound(indexOfVar)
-                Xdata = self.genSamplePoints("vander",samples[indexOfVar],lb,ub)
+                Xdata = self.genSamplePoints("vander",self.samples[indexOfVar],lb,ub)
                 ydata = genBlackBoxValuesSeq(self.name, self.actualStart, Xdata, indexOfVar)
 
                 labels, expr = callAlamopy(Xdata, ydata, lb, ub)
@@ -450,6 +451,15 @@ class blackBox(object):
                 flag, boxVal = self.updateFlag(tempPoint,tempMinimal,indexOfVar)
 
                 print("Flag: ", flag)
+                if(flag == False):
+                    self.samples[indexOfVar] += 8
+                else:
+                    self.samples[indexOfVar] = int(self.samples[indexOfVar]/2)
+                    # Store all of the output and coordinates for future inspection
+                    self.allCalls.append(self.totalCalls)
+                    self.allValue.append(boxVal)
+            if(self.checkEnd() == True):
+                return
 
 
 """
@@ -468,9 +478,14 @@ def main():
     box.readDataFile()
     box.genBackupStart()
     box.genActualStart("origin")
-    box.coordinateSearch()
+
+    startTime = time.time()
+    box.coordinateSearchBeta()
+    endTime = time.time()
+    dur = endTime - startTime
     # box.showParameter()
     # box.getResult()
+    box.makeCsv(time=dur)
     box.makePlot()
 
 main()

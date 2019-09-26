@@ -6,6 +6,8 @@ output.out
 dfo_results/
 manual/
 plots/
+MS_project_Nichos_package/
+
 # Reference/
 problemdata/
 source_convexmodels/
