@@ -188,6 +188,16 @@ class blackBox(object):
             self.iniStart.append(float(k.strip()))
         infile.close()
 
+    def readReferenceSol(self):
+        infile = open("all/"+self.name+".sol",'r')
+        lines = infile.readlines()
+        solutions = []
+        for line in lines:
+            for sol in line.split():
+                solutions.append(float(sol))
+        print(solutions)
+        return solutions
+        
     '''
     Generate starting points that are ready to be chose
     '''
@@ -449,7 +459,7 @@ class blackBox(object):
                 labels, expr = callAlamopy(Xdata, ydata, lb, ub)
                 tempPoint, tempMinimal = self.callBaron(labels,expr, lb, ub, indexOfVar)
                 flag, boxVal = self.updateFlag(tempPoint,tempMinimal,indexOfVar)
-
+                
                 print("Flag: ", flag)
                 if(flag == False):
                     self.samples[indexOfVar] += 8
@@ -480,12 +490,13 @@ def main():
     box.genActualStart("origin")
 
     startTime = time.time()
-    box.coordinateSearchBeta()
+    # box.coordinateSearchBeta()
+    ref_sols = box.readReferenceSol()
     endTime = time.time()
     dur = endTime - startTime
     # box.showParameter()
     # box.getResult()
-    box.makeCsv(time=dur)
-    box.makePlot()
+    # box.makeCsv(time=dur)
+    # box.makePlot()
 
 main()
