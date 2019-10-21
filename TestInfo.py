@@ -6,6 +6,8 @@ from bs4 import BeautifulSoup
 import xlsxwriter as wx
 import sys
 import xlrd, xlwt
+from datetime import date,datetime
+import pandas as pd
 
 def web_info():
     response = requests.get('http://thales.cheme.cmu.edu/dfo/comparison/comp.html')
@@ -17,7 +19,7 @@ def web_info():
         text = x.get_text().split()
         if index == 0:
             title = text[:]
-            title.insert(0,"")
+            title.insert(0,"index")
         else:
             sol.append(text)
     return title,sol
@@ -42,8 +44,15 @@ def write_excel(title,sol):
 	for index,row in enumerate(sol):
 		for i in range(0,len(row)):
 			sheet1.write(index+1,i,row[i])
-	f.save('ModleList.xls')
+	f.save('ModelList.xls')
+
+def read_excel(smoothness,convexity,variables):
+	file = 'ModelList.xlsx'
+	sheet = pd.read_excel(file,sheet_name='models',header=0,index_col=1,usecols="A:H")
+	filter_sol = sheet[(sheet['smoothness']==smoothness)&(sheet['convexity']==convexity)&(sheet['variables']<variables)]
+	return filter_sol
 
 if __name__ == "__main__":
-    title, sol = web_info()
-    write_excel(title,sol)
+    # title, sol = web_info()
+    # write_excel(title,sol)
+	sol = read_excel('smooth','convex',10)
