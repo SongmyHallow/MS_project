@@ -104,7 +104,8 @@ class blackBox(object):
                  lowBound=[],upBound=[],
                  iniStart=[],backUpStart=[],actualStart=[],
                  minimalCoordinate=[],minimalValue=[],allValue=[],
-                 totalCalls=0,calls=[],allCalls=[]):
+                 totalCalls=0,calls=[],allCalls=[],
+                 error=0):
         self.name = name
         self.cycles = cycles
         self.radius = radius
@@ -122,6 +123,7 @@ class blackBox(object):
         self.minimalCoordinate = minimalCoordinate
         self.minimalValue = minimalValue  
         self.allValue = allValue
+        self.error = error
 
     def clear(self):
         self.name=None
@@ -187,17 +189,31 @@ class blackBox(object):
         for k in lines[3].split():
             self.iniStart.append(float(k.strip()))
         infile.close()
-
+    '''
+    Read reference solution of coordinate
+    '''
     def readReferenceSol(self):
         infile = open("all/"+self.name+".sol",'r')
         lines = infile.readlines()
-        solutions = []
+        coordinate = []
         for line in lines:
             for sol in line.split():
-                solutions.append(float(sol))
-        print(solutions)
-        return solutions
-        
+                coordinate.append(float(sol))
+        infile.close()
+        return coordinate
+
+    def readRefOptimal(self):
+        import xlrd
+        infile = xlrd.open_workbook('ModelList.xlsx')
+        table = infile.sheet_by_name('models')
+
+        sol = 0
+        for rownum in range(0,table.nrows):
+            row = table.row_values(rownum)
+            if row[1] == self.name:
+                sol = row[6]
+        return float(sol)
+
     '''
     Generate starting points that are ready to be chose
     '''
@@ -313,19 +329,19 @@ class blackBox(object):
     def updateFlag(self,tempPoint,tempMinimal,indexOfVar):
         import numpy as np
         boxVal = genBlackBoxValue(self.name,tempPoint)
-        print("Box value:",boxVal)
-        print("Temp minimal value:",tempMinimal)
+        # print("Box value:",boxVal)
+        # print("Temp minimal value:",tempMinimal)
         
         if(boxVal == 0):
             boxVal += 1e-5
         ratio = tempMinimal / boxVal
-        if(ratio > 0.5 and ratio < 2):
+        if(ratio > 0.75 and ratio < 1.5):
             if(len(self.minimalValue)<1 or boxVal<self.minimalValue[-1]):
                 self.actualStart = tempPoint
                 self.minimalValue.append(boxVal)
                 self.minimalCoordinate.append(tempPoint)
                 self.calls.append(self.totalCalls)
-            self.radius[indexOfVar] *= 2.5
+            self.radius[indexOfVar] *= 3
             print("Raidus is increased to: ",self.radius[indexOfVar])
             return True,boxVal
         else:
@@ -364,8 +380,8 @@ class blackBox(object):
     def makeCsv(self,time):
         from pandas import DataFrame
         import csv
-        csvfile = open('experimentData.csv','a+',newline='')
-        fieldsnames = ['model_name','time','cycle','values','calls','point']
+        csvfile = open('experimentDataNew.csv','a+',newline='')
+        fieldsnames = ['model_name','time','cycle','values','error','calls','point']
         # writer = csv.writer(csvfile,delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         writer = csv.DictWriter(csvfile,fieldnames=fieldsnames)
         # values = list_int2str(values)
@@ -377,6 +393,7 @@ class blackBox(object):
                 'time':time,
                 'cycle':self.cycles,
                 'values':self.minimalValue[-1],
+                'error':self.error,
                 'calls':self.calls[-1],
                 'point':self.minimalCoordinate[-1]
             })
@@ -400,7 +417,7 @@ class blackBox(object):
     '''
     def coordinateSearch(self):
         import random
-
+        import numpy as np
         # the number of sampling
         ini_sample = 8
         self.samples = [ini_sample for i in range(self.numOfVar)]
@@ -437,8 +454,12 @@ class blackBox(object):
                         self.samples[indexOfVar] = int(self.samples[indexOfVar]*0.8)
                         self.allCalls.append(self.totalCalls)
                         self.allValue.append(boxVal)
-            if(self.checkEnd()==True):
-                    return
+            if(self.checkEnd()==True or self.totalCalls > 5000):
+                print("Exit normally")
+                ref_coordiante = self.readReferenceSol()
+                ref_optimal = self.readRefOptimal()
+                self.error = np.abs(ref_optimal-self.allValue[-1])/self.allValue[-1]
+                return
 
     def coordinateSearchBeta(self):
         # Initialization
@@ -490,13 +511,13 @@ def main():
     box.genActualStart("origin")
 
     startTime = time.time()
+    box.coordinateSearch()
     # box.coordinateSearchBeta()
-    ref_sols = box.readReferenceSol()
     endTime = time.time()
     dur = endTime - startTime
     # box.showParameter()
-    # box.getResult()
-    # box.makeCsv(time=dur)
+    box.getResult()
+    box.makeCsv(time=dur)
     # box.makePlot()
 
 main()

@@ -9,6 +9,6 @@ for line in ModelFile.readlines():
     if(line.strip() =='arith.h' or line.strip() == 'config.h' or line.strip() == 'expquad'):
         continue
     else:
-        os.system("python CoreAlgo.py "+line.strip()+" 60")
+        os.system("python BlackBoxCore.py "+line.strip()+" 60")
     
 ModelFile.close()
