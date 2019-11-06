@@ -1,3 +1,8 @@
+Carnegie Mellon University
+Master of Chemical Engineering (2018-2019)
+
+This project involved the implementation of cyclic coordinate search algorithm for DFO, by bringing together different sampling methods, building surrogate modeling by machine learning tools, and simulation optimization methodologies. The goal is to integrate methods from different fields to search towards global optimization quickly with least demands of modeling evaluations and higher accuracy.
+
 # MS_project
 Integrated Machine Learning / Optimization with Python
 
