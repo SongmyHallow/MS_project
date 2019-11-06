@@ -1,6 +1,12 @@
 import numpy as np
+import sobol_seq
+def sobol_sequence(lBound,uBound,dim,num):
+    Xdata = sobol_seq.i4_sobol_generate(1,num)
+    Xdata = [lst[0] for lst in Xdata]
+    ratio = (uBound-lBound)/1.0
+    seq = [(i*ratio+lBound) for i in Xdata]
+    return seq
 '''
-*****************************************************************
   1. HAMMERSLEY computes an element of a Hammersley sequence.
   Parameters:
 

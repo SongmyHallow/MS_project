@@ -80,6 +80,7 @@ Regression, use alamopy package to get the numerical expression
 '''
 def callAlamopy(input_values,output_values,lowBound,upBound):
     import alamopy
+    # print(input_values)
     alamo_result = alamopy.alamo(xdata=input_values,zdata=output_values,xmin=lowBound,xmax=upBound,monomialpower=(1,2))
 #     print("===============================================================")
 #     print("ALAMO results")
@@ -92,6 +93,19 @@ def callAlamopy(input_values,output_values,lowBound,upBound):
     labels = alamo_result['xlabels']
     expr = alamo_result['f(model)']
     return labels,expr
+
+def saveTemp(dic,Xdata,ydata):
+    for i,j in zip(Xdata,ydata):
+        if i not in dic.keys():
+            dic[i] = j
+    return
+
+def retrieveTemp(dic,lb,ub,Xdata,ydata):
+    for key in dic.keys():
+        if key>lb and key<ub and key not in Xdata:
+            Xdata.append(key)
+            ydata.append(dic[key])
+    return
   
 """
 ================================================================================
@@ -99,13 +113,13 @@ definition of the core class
 ================================================================================
 """
 class blackBox(object):
-    def __init__(self,name=None,cycles=0,radius=[],samples=[],
+    def __init__(self,name=None,cycles=0,radius=None,samples=None,
                  numOfVar=0,
                  lowBound=[],upBound=[],
                  iniStart=[],backUpStart=[],actualStart=[],
                  minimalCoordinate=[],minimalValue=[],allValue=[],
                  totalCalls=0,calls=[],allCalls=[],
-                 error=0):
+                 error=0,endCycle=0):
         self.name = name
         self.cycles = cycles
         self.radius = radius
@@ -124,19 +138,18 @@ class blackBox(object):
         self.minimalValue = minimalValue  
         self.allValue = allValue
         self.error = error
+        self.endCycle = endCycle
+        self.trapIndicater = 0
 
     def clear(self):
-        self.name=None
-        self.cycles=0
-        self.radius=[]
-        self.samples = []
-        self.numOfVar = 0
+        self.radius = 0
+        self.samples = 0
         self.lowBound = []
         self.upBound = []
-        self.iniStart = []
-        self.backUpStart = []
-        self.actualStart = []
-    
+        self.calls = []
+        self.totalCalls = 0
+        self.allCalls = []
+ 
     def showParameter(self):
         print("Name:",self.name)
         print("Total number of cycles:",self.cycles)
@@ -153,6 +166,9 @@ class blackBox(object):
         print("Calls list:",self.calls)
 
     def getResult(self):
+        print("All number of calls:",self.allCalls)
+        print("All local optimal:",self.allValue)
+
         print("Optimal values:",self.minimalValue)
         print("Optimal points:",self.minimalCoordinate)
         
@@ -246,7 +262,7 @@ class blackBox(object):
     '''
     def genVariableBound(self,index):
         import random
-
+        # Newer version
         if(self.actualStart[index]-self.radius[index]<self.lowBound[index]):
             lb = self.lowBound[index]
         else:
@@ -256,10 +272,23 @@ class blackBox(object):
             ub = self.upBound[index]
         else:
             ub = self.actualStart[index]+self.radius[index]
-
         # self.tempLB = lb
         # self.tempUB = ub
         # offset = random.uniform(lb,ub)
+        return lb,ub
+
+    def genVariableBoundOld(self,index):
+        import random
+        # Previous version
+        if(self.actualStart[index]-self.radius<self.lowBound[index]):
+            lb = self.lowBound[index]
+        else:
+            lb = self.actualStart[index]-self.radius
+        
+        if(self.actualStart[index]+self.radius>self.upBound[index]):
+            ub = self.upBound[index]
+        else:
+            ub = self.actualStart[index]+self.radius
         return lb,ub
     
     '''
@@ -271,8 +300,7 @@ class blackBox(object):
     5. Adaptive sampling from package 'adaptive'
     '''
     def genSamplePoints(self,method,num,lowBound,upBound):
-        from Sampling import halton_sequence,hammersley_sequence,van_der_corput,latin_random_sequence
-        import sobol_seq
+        from Sampling import halton_sequence,hammersley_sequence,van_der_corput,latin_random_sequence,sobol_sequence
         if(method=="halton"):
             Xdata,_ = halton_sequence(lowBound,upBound,num)
         elif(method=="hammersley"):
@@ -282,7 +310,7 @@ class blackBox(object):
         elif(method=="latin"):
             Xdata,_ = latin_random_sequence(lowBound,upBound,num,1,1)
         elif(method=="sobol"):
-            Xdata = sobol_seq.i4_sobol_generate(1,num)
+            Xdata = sobol_sequence(lowBound,upBound,1,num)
         self.totalCalls+=num
         return Xdata
 
@@ -335,9 +363,11 @@ class blackBox(object):
         if(boxVal == 0):
             boxVal += 1e-5
         ratio = tempMinimal / boxVal
-        if(ratio > 0.75 and ratio < 1.5):
+        print(tempMinimal,boxVal)
+        if((ratio > 0.5 and ratio < 1.75) or (np.abs(tempMinimal-boxVal)<0.01)):
+            self.actualStart = tempPoint
             if(len(self.minimalValue)<1 or boxVal<self.minimalValue[-1]):
-                self.actualStart = tempPoint
+                # self.actualStart = tempPoint
                 self.minimalValue.append(boxVal)
                 self.minimalCoordinate.append(tempPoint)
                 self.calls.append(self.totalCalls)
@@ -350,7 +380,25 @@ class blackBox(object):
             return False,boxVal
     
     def checkEnd(self):
-        if(len(self.minimalValue)>1 and self.minimalValue[-2]-self.minimalValue[-1]<1e-4):
+        import numpy as np
+        def checkVar(self):
+            if(len(self.minimalValue)>1 and self.minimalValue[-2]-self.minimalValue[-1]<1e-4):
+                return True
+            else:
+                return False
+            # if len(self.minimalValue)<self.numOfVar:
+            #     return False
+            # else:
+            #     values = self.minimalValue[len(self.minimalValue)-self.numOfVar:]
+            #     var = np.var(values)
+            #     if var < 0.1:
+            #         return True
+            #     else:
+            #         return False
+
+        # if(len(self.minimalValue)>1 and self.minimalValue[-2]-self.minimalValue[-1]<1e-2):
+        #     return True
+        if(len(self.minimalValue)>1 and checkVar(self)):
             return True
         else:
             return False
@@ -361,16 +409,15 @@ class blackBox(object):
     :param list calls
     :param string name: name of model
     '''
-    def makePlot(self):
+    def makePlot(self,titlename):
         import matplotlib.pyplot as plt
-        self.getResult()
-        self.getCalls()
         plt.plot(self.allCalls, self.allValue, '-o')
-        plt.xlabel("Number of calls")
-        plt.ylabel("Optimal values")
-        for x, y in zip(self.allCalls, self.allValue):
-            plt.text(x, y+0.3, '%.5f'%y, ha='center', va='bottom', fontsize=10.5)
-        plt.title(self.name)
+        plt.xlabel("Function Evaluations")
+        plt.ylabel("Evaluation Values")
+        # for x, y in zip(self.allCalls, self.allValue):
+        #     plt.text(x, y+0.3, '%.5f'%y, ha='center', va='bottom', fontsize=10.5)
+        plt.title(titlename)
+        plt.grid()
         plt.savefig("plots\\"+self.name+".png")
         print("Plot of model "+ self.name +" is saved")
 
@@ -391,7 +438,7 @@ class blackBox(object):
             writer.writerow({
                 'model_name':self.name,
                 'time':time,
-                'cycle':self.cycles,
+                'cycle':self.endCycle,
                 'values':self.minimalValue[-1],
                 'error':self.error,
                 'calls':self.calls[-1],
@@ -434,14 +481,21 @@ class blackBox(object):
                 print("The No.",indexOfVar+1,"Variable")
                 # flag of the quality of solution
                 flag = False
+
+                tempDict = {}
+
                 # if the solution is not valid, then repeat
                 while(flag==False):
                     # left bound and right bound
-                    lb,ub = self.genVariableBound(indexOfVar)
+                    lb,ub = self.genVariableBound(indexOfVar)   
                     # sampling between lb and rb
                     Xdata = self.genSamplePoints("vander",self.samples[indexOfVar],lb,ub)
                     # get black box values of xdata
                     ydata = genBlackBoxValuesSeq(self.name,self.actualStart,Xdata,indexOfVar)
+
+                    retrieveTemp(tempDict,lb,ub,Xdata,ydata)
+                    saveTemp(tempDict,Xdata,ydata)
+                    
                     # surrogate model
                     labels,expr = callAlamopy(Xdata,ydata,lb,ub)
                     tempPoint,tempMinimal = self.callBaron(labels,expr,lb,ub,indexOfVar)
@@ -451,14 +505,22 @@ class blackBox(object):
                     if(flag==False):
                         self.samples[indexOfVar] +=8
                     else:
-                        self.samples[indexOfVar] = int(self.samples[indexOfVar]*0.8)
+                        # make sure that the number of samples will not be too small
+                        if self.samples[indexOfVar] > 6:
+                            self.samples[indexOfVar] = int(self.samples[indexOfVar]*0.5)
+                        else:
+                            self.samples[indexOfVar] = 3
                         self.allCalls.append(self.totalCalls)
                         self.allValue.append(boxVal)
                     if(self.checkEnd()==True or self.totalCalls > 5000):
-                        print("Exit normally")
+                        if self.checkEnd==True:
+                            print("Exit normally")
+                        elif self.totalCalls > 6000:
+                            print("Exceed calls limit")
                         ref_coordiante = self.readReferenceSol()
                         ref_optimal = self.readRefOptimal()
                         self.error = np.abs(ref_optimal-self.allValue[-1])/self.allValue[-1]
+                        self.endCycle = cycle
                         return
 
     def coordinateSearchBeta(self):
@@ -492,12 +554,112 @@ class blackBox(object):
             if(self.checkEnd() == True):
                 return
 
+    def coordinateSearchOld(self,method):
+        import random
+        import numpy as np
+        from Sampling import halton_sequence,hammersley_sequence,van_der_corput,latin_random_sequence,sobol_sequence
+        import sobol_seq
+                    
+        self.radius = 1
+        self.samples = 16
+        for cycle in range(self.cycles):
+            print("The No.",cycle+1,"cycle")
+            shuffle = list(range(len(self.actualStart)))
+            random.shuffle(shuffle)
+            for indexOfVar in shuffle:
+                print("The No.",indexOfVar+1,"Variable")
+                # Generate boundaries of variables
+                lb = 0
+                ub = 0
+                if(self.actualStart[indexOfVar]-self.radius<self.lowBound[indexOfVar]):
+                    lb = self.lowBound[indexOfVar]
+                else:
+                    lb = self.actualStart[indexOfVar]-self.radius
+                
+                if(self.actualStart[indexOfVar]+self.radius>self.upBound[indexOfVar]):
+                    ub = self.upBound[indexOfVar]
+                else:
+                    ub = self.actualStart[indexOfVar]+self.radius
+                Xdata,_=van_der_corput(lb,ub,self.samples,2)
+
+                if(method=="halton"):
+                    Xdata,_ = halton_sequence(lb,ub,self.samples)
+                elif(method=="hammersley"):
+                    Xdata,_ = hammersley_sequence(lb,ub,self.samples)
+                elif(method=="vander"):
+                    Xdata,_=van_der_corput(lb,ub,self.samples,2)
+                elif(method=="latin"):
+                    Xdata,_ = latin_random_sequence(lb,ub,self.samples,1,1)
+                elif(method=="sobol"):
+                    Xdata = sobol_sequence(lb,ub,1,self.samples)
+
+                self.totalCalls+=self.samples
+                ydata = genBlackBoxValuesSeq(self.name, self.actualStart, Xdata, indexOfVar)                
+                # regression simulation
+                labels, expr = callAlamopy(Xdata, ydata, lb, ub)
+                tempPoint, tempMinimal = self.callBaron(labels,expr, lb, ub, indexOfVar)
+                boxVal = genBlackBoxValue(self.name,tempPoint)
+                # print("Box value:",boxVal)
+                # print("Temp minimal value:",tempMinimal)
+                if(boxVal == 0):
+                    boxVal += 1e-5
+                ratio = tempMinimal / boxVal
+                print(tempMinimal,boxVal)
+
+                flag = False
+                if((ratio > 0.5 and ratio < 1.5) or (np.abs(tempMinimal-boxVal)<0.001)):
+                    self.actualStart = tempPoint
+                    if(len(self.minimalValue)<1 or boxVal<self.minimalValue[-1]):
+                        self.minimalValue.append(boxVal)
+                        self.minimalCoordinate.append(tempPoint)
+                        self.calls.append(self.totalCalls)
+                        print("New optimal value is found: ",boxVal," at:",tempPoint)
+                    self.radius*= 3
+                    print("Raidus is increased to: ",self.radius)
+                    
+                    flag = True
+                else:
+                    self.radius*= 0.8
+                    print("Raidus is decreased to: ",self.radius)
+                
+                if(flag==False):
+                    self.samples+=8
+                else:
+                    # make sure that the number of samples will not be too small
+                    if self.samples > 6:
+                        self.samples = int(self.samples*0.5)
+                    else:
+                        self.samples = 3
+                    self.allCalls.append(self.totalCalls)
+                    self.allValue.append(boxVal)
+                
+                endFlag = False
+                if(len(self.minimalValue)>1 and self.minimalValue[-2]-self.minimalValue[-1]<1e-5):
+                    endFlag = True
+                # elif(len(self.minimalValue)>1 and np.abs(boxVal-self.minimalValue[-1]<1e-5)):
+                #     self.trapIndicater += 1
+                #     if self.trapIndicater > 20:
+                #         endFlag = True
+                else:
+                    endFlag = False
+
+                if(endFlag ==True or self.totalCalls > 5000):
+                    if endFlag==True:
+                        print("Exit normally:",self.calls[-1])
+                    elif self.totalCalls > 5000:
+                        print("Exceed calls limit:",self.calls[-1])
+                    ref_coordiante = self.readReferenceSol()
+                    ref_optimal = self.readRefOptimal()
+                    self.error = np.abs(ref_optimal-self.allValue[-1])/self.allValue[-1]
+                    self.endCycle = cycle
+                    return
 
 def HYSYSsimulation(cycles):
     import os
     import win32com.client as win32
     import numpy as np
     import time
+    import random
     
     def hy_distinguish(hysolver):
         i=4
@@ -605,18 +767,20 @@ def HYSYSsimulation(cycles):
         if(boxVal == 0):
             boxVal += 1e-5
         ratio = tempMinimal / boxVal
-        if(ratio > 0.75 and ratio < 1.5):
+        print(tempMinimal,boxVal)
+
+        if(ratio > 0.5 and ratio < 1.5 or (np.abs(tempMinimal-boxVal)<0.001)):
+            box.actualStart = tempPoint
             if(len(box.minimalValue)<1 or boxVal<box.minimalValue[-1]):
-                box.actualStart = tempPoint
                 box.minimalValue.append(boxVal)
                 box.minimalCoordinate.append(tempPoint)
                 box.calls.append(box.totalCalls)
-            box.radius[indexOfVar] *= 3
-            print("Raidus is increased to: ",box.radius[indexOfVar])
+            box.radius *= 2
+            print("Raidus is increased to: ",box.radius)
             return True,boxVal
         else:
-            box.radius[indexOfVar] *= 0.8
-            print("Raidus is decreased to: ",box.radius[indexOfVar])
+            box.radius *= 0.75
+            print("Raidus is decreased to: ",box.radius)
             return False,boxVal
 
     def resetAspen():
@@ -640,44 +804,85 @@ def HYSYSsimulation(cycles):
     box = blackBox(name='HYSYS',cycles=cycles)
     box.lowBound=np.array([0.3000,0.7500,1.8750,4.6750,0.8590,2.5970,2.5410,3.9110])
     box.upBound=np.array([5.7000,14.2500,35.6250,88.8250,16.3210,49.3430,48.2790,74.3090])
-    box.iniStart = (box.lowBound+box.upBound)/2
+    box.iniStart = (box.lowBound+box.upBound)/3
     box.genActualStart("origin")
     box.numOfVar = 8
 
     # Initialization
-    ini_sample = 4
-    box.samples = [ini_sample for i in range(box.numOfVar)]
-    ini_radius = 1
-    box.radius = [ini_radius for i in range(box.numOfVar)]
+    box.samples = 12
+    box.radius = 3
 
     for cycle in range(box.cycles):
         print("The No.",cycle+1,"Cycle")
+
         for indexOfVar in range(box.numOfVar):
             print("The No.",indexOfVar+1,"Variable")
 
-            lb,ub = box.genVariableBound(indexOfVar)
-            Xdata = box.genSamplePoints("vander",box.samples[indexOfVar],lb,ub)
-            print(Xdata)
+            sampleFlag = False
+            sampleCount = 0
+            while(sampleFlag is not True):
+                sampleCount +=1 
+                print("loop of sampling:",sampleCount)
+                lb,ub = box.genVariableBoundOld(indexOfVar)
+                tempXdata = box.genSamplePoints("vander",box.samples,lb,ub)
+                # evalute sampling points
+                tempydata = genHYSYSValuesSeq(box.actualStart,tempXdata,indexOfVar,hyCase,hysolver)
+                # remove those unavailable data points
+                print("Temp X data:",tempXdata)
+                print("Temp y data:",tempydata)   
+                Xdata = []
+                ydata = []
+                for i in range(len(tempydata)):
+                    if(tempydata[i] < 1e3):
+                        Xdata.append(tempXdata[i])
+                        ydata.append(tempydata[i])
+                if(len(Xdata)>2 and len(ydata)>2):
+                    break
+                elif(sampleCount > 3):
+                    break
+                elif(len(Xdata)==0 and len(ydata)==0):
+                    sampleFlag = True
+                    break
+                else:
+                    box.samples += 4
+                    if(box.samples >= 30):
+                        box.radius *= 2
+                        print("Raidus is increased to: ",box.radius)
+                        box.samples = int(box.samples/2)
 
-            # evalute sampling points
-            ydata = genHYSYSValuesSeq(box.actualStart,Xdata,indexOfVar,hyCase,hysolver)
+            if(sampleCount>3 or sampleFlag == True):
+                print("Sampling counter is too big, get to the next loop")
+                print("current coordinate:",box.actualStart)
+                box.radius *= 2
+                continue
+
+            print("X data:",Xdata)
+            print("y data:",ydata)            
+
             labels, expr = callAlamopy(Xdata, ydata, lb, ub)
             tempPoint, tempMinimal = box.callBaron(labels,expr, lb, ub, indexOfVar)
 
             flag, boxVal = updateHYSYSflag(box,tempPoint,tempMinimal,indexOfVar,hyCase,hysolver)
             
+            print("current coordinate:",box.actualStart)
+            print("available:",box.minimalValue)
             print("Flag: ", flag)
-            
             if(flag == False):
-                box.samples[indexOfVar] += 8
+                box.samples += 4
             else:
-                box.samples[indexOfVar] = int(box.samples[indexOfVar]/2)
+                if(box.samples > 6):
+                    box.samples = int(box.samples/2)
+                else:
+                    box.samples = 3
                 # Store all of the output and coordinates for future inspection
                 box.allCalls.append(box.totalCalls)
                 box.allValue.append(boxVal)
-            if(box.checkEnd() == True):
+            if(box.checkEnd() == True or box.totalCalls>5000):
+                print("Exit normally:",box.calls[-1])
+                print("Recording calls:",box.allCalls)
+                print("Recording points:",box.allValue)
                 return
-            resetAspen()
+            # resetAspen()
 
     # f_x0 = hy_Object(hyCase, hysolver, box.iniStart)
     # print('function output of x0 is: ',f_x0)
@@ -702,13 +907,14 @@ def main():
 
         startTime = time.time()
         # box.coordinateSearch()
+        box.coordinateSearchOld('latin')
         # box.coordinateSearchBeta()
         endTime = time.time()
         dur = endTime - startTime
         # box.showParameter()
-        # box.getResult()
-        # box.makeCsv(time=dur)
-        # box.makePlot()
+        box.getResult()
+        box.makeCsv(time=dur)
+        box.makePlot(fileName+" latin")
     else:
         HYSYSsimulation(cycles)
 

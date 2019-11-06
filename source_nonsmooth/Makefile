@@ -1,8 +1,8 @@
 #Makefile to compile nonsmooth models from the Luksan and Vlcek
 #Created by Luis Miguel Rios lmrios@gmail.com
 #define the fortran compiler
-#FC=gfortran
-FC=g77
+FC=gfortran
+# FC=g77
 
 all: problem2_1 problem2_2 problem2_3 problem2_4 \
      problem2_5 problem2_6 problem2_7 problem2_8 \
