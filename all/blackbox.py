@@ -8,6 +8,8 @@ from Sampling import halton_sequence,hammersley_sequence,van_der_corput,latin_ra
 from pyomo.environ import *
 from pyomo.opt import SolverFactory
 import alamopy
+from pandas import DataFrame
+import csv
 '''
 Definition of the core class
 '''
@@ -107,7 +109,7 @@ def evaluate(box,Xdata,index):
 
 def callAlamopy(Xdata,ydata,lowBound,upBound):
     # print(input_values)
-    alamo_result = alamopy.alamo(xdata=Xdata,zdata=ydata,xmin=lowBound,xmax=upBound,monomialpower=(1,2))
+    alamo_result = alamopy.alamo(xdata=Xdata,zdata=ydata,xmin=lowBound,xmax=upBound,monomialpower=(2,2))
 #     print("===============================================================")
 #     print("ALAMO results")
 #     print("===============================================================")
@@ -265,9 +267,23 @@ def makePlot(box,sample_method):
     plt.savefig('plots\\'+box.name+'('+sample_method+')'+'.eps')
     print('Plot is saved')
 
+def makeCSV(box,sample_method):
+    csvfile = open('reportData.csv','a+',newline='')
+    fieldsname = ['name','method','optimals','calls','finalpoint']
+    writer = csv.DictWriter(csvfile,fieldnames=fieldsname)
+
+    writer.writerow({
+        'name':box.name,
+        'method':sample_method,
+        'optimals':box.optimalValues,
+        'calls':box.calls,
+        'finalpoint':box.optimalPoints
+    })
+    csvfile.close()
+
 def main():
     box = coordinateSearch(filename,cycles,sample_method,sample_ini)
-    makePlot(box,sample_method)
+    # makePlot(box,sample_method)
     return
 
 if __name__ == "__main__":
