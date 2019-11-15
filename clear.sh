@@ -58,5 +58,5 @@ else
     echo $File7" does not exist"
 fi
 
-find . -name "*.exe" | xargs rm -rf
-echo "Executable files are deleted"
+# find . -name "*.exe" | xargs rm -rf
+echo "Redundant files are deleted"

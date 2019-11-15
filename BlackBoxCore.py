@@ -81,7 +81,7 @@ Regression, use alamopy package to get the numerical expression
 def callAlamopy(input_values,output_values,lowBound,upBound):
     import alamopy
     # print(input_values)
-    alamo_result = alamopy.alamo(xdata=input_values,zdata=output_values,xmin=lowBound,xmax=upBound,monomialpower=(1,2))
+    alamo_result = alamopy.alamo(xdata=input_values,zdata=output_values,xmin=lowBound,xmax=upBound,monomialpower=(2,2))
 #     print("===============================================================")
 #     print("ALAMO results")
 #     print("===============================================================")
@@ -169,21 +169,32 @@ class blackBox(object):
         print("All number of calls:",self.allCalls)
         print("All local optimal:",self.allValue)
 
-        print("Optimal values:",self.minimalValue)
-        print("Optimal points:",self.minimalCoordinate)
+        # print("Optimal values:",self.minimalValue)
+        # print("Optimal points:",self.minimalCoordinate)
         
     '''
     Compile .c file
     :param string filename: name of c file (with out extension)
     ''' 
-    def compileCode(self):
-        os.system('gcc source_princetonlibgloballib/'+self.name+'.c -lm -o '+self.name)
-        after_name = self.name+".exe"
-        print("Blackbox Model Name: ",self.name)
-        if(os.path.exists(after_name)):
-            print("Compilation finished")
-        else:
-            print("Compilation failed")
+    def compileCode(self,lib):
+        if(lib == 'prin'):
+            os.system('gcc source_princetonlibgloballib/'+self.name+'.c -lm -o '+self.name)
+            after_name = self.name+".exe"
+            print("Blackbox Model Name: ",self.name)
+            if(os.path.exists(after_name)):
+                print("Compilation finished")
+            else:
+                print("Compilation failed")
+        elif(lib == 'nons'):
+            # os.system('gfortran -g -c source_nonsmooth/'+self.name+'.f')
+            os.system('gfortran -o '+self.name+' source_nonsmooth/'+self.name+'.o source_nonsmooth/test06.o source_nonsmooth/test19.o')
+            after_name = self.name+".exe"
+            print("Nonsmooth Blackbox Model Name: ",self.name)
+            if(os.path.exists(after_name)):
+                print("Compilation finished")
+            else:
+                print("Compilation failed")
+
     
     '''
     Read boundaries, starting points and number of variables
@@ -558,8 +569,7 @@ class blackBox(object):
         import random
         import numpy as np
         from Sampling import halton_sequence,hammersley_sequence,van_der_corput,latin_random_sequence,sobol_sequence
-        import sobol_seq
-                    
+                            
         self.radius = 1
         self.samples = 16
         for cycle in range(self.cycles):
@@ -634,7 +644,7 @@ class blackBox(object):
                     self.allValue.append(boxVal)
                 
                 endFlag = False
-                if(len(self.minimalValue)>1 and self.minimalValue[-2]-self.minimalValue[-1]<1e-5):
+                if(len(self.minimalValue)>1 and self.minimalValue[-2]-self.minimalValue[-1]<1e-6):
                     endFlag = True
                 # elif(len(self.minimalValue)>1 and np.abs(boxVal-self.minimalValue[-1]<1e-5)):
                 #     self.trapIndicater += 1
@@ -783,17 +793,6 @@ def HYSYSsimulation(cycles):
             print("Raidus is decreased to: ",box.radius)
             return False,boxVal
 
-    def resetAspen():
-        from pynput.mouse import Button, Controller
-        # Get the mouse controlled
-        mouse = Controller()
-        # The current coordinate of mouse
-        print(mouse.position)
-        # Mouse with the new coordinate
-        mouse.position = (784, 705)
-        # left click
-        mouse.click(Button.left, 1)
-
     '''maximum number of function evaluation is 2200'''
     ''' Connecting to the Aspen Hysys App just one time during optimization'''      
     print(' # Connecting to the Aspen Hysys App ... ')
@@ -895,26 +894,27 @@ main function
 if __name__ == "__main__":
     fileName = sys.argv[1]
     cycles = int(sys.argv[2])
+    lib = sys.argv[3]
 
 def main():
     if fileName != 'HYSYS':
         import time
         box = blackBox(name=fileName,cycles=cycles)
-        box.compileCode()
+        box.compileCode(lib)
         box.readDataFile()
         box.genBackupStart()
         box.genActualStart("origin")
 
         startTime = time.time()
         # box.coordinateSearch()
-        box.coordinateSearchOld('latin')
+        box.coordinateSearchOld('sobol') # vander, halton, hammersley, latin, sobol
         # box.coordinateSearchBeta()
         endTime = time.time()
         dur = endTime - startTime
         # box.showParameter()
         box.getResult()
         box.makeCsv(time=dur)
-        box.makePlot(fileName+" latin")
+        # box.makePlot(fileName+" latin")
     else:
         HYSYSsimulation(cycles)
 
