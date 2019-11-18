@@ -2,12 +2,11 @@ import os
 import re
 
 ModelFile = open('selected.txt','r')
+methods = ['halton','vander','hammersley','latin','sobol']
 
 for line in ModelFile.readlines():
-    # if(line.strip() =='arith.h' or line.strip() == 'config.h' or line.strip() == 'expquad'):
-    #     continue
-    # else:
-    #     os.system("python BlackBoxCore.py "+line.strip()+" 60")
-    print(line.strip())
+    name = line.strip()
+    for method in methods:
+        os.system("python blackbox.py "+name+" 60 "+method+" 8")
     
 ModelFile.close()

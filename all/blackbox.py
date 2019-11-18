@@ -10,6 +10,7 @@ from pyomo.opt import SolverFactory
 import alamopy
 from pandas import DataFrame
 import csv
+import re
 '''
 Definition of the core class
 '''
@@ -67,6 +68,11 @@ class blackBox(object):
             self.iniLocation.append(float(k.strip()))
         infile.close()
 
+        if re.search('convex',self.name):
+            self.name = 'f' + self.name
+            
+        elif re.search('problem',self.name):
+            self.name = self.name.replace('.','_')
 
 '''
 Helper functions
@@ -109,7 +115,8 @@ def evaluate(box,Xdata,index):
 
 def callAlamopy(Xdata,ydata,lowBound,upBound):
     # print(input_values)
-    alamo_result = alamopy.alamo(xdata=Xdata,zdata=ydata,xmin=lowBound,xmax=upBound,monomialpower=(2,2))
+    alamo_result = alamopy.alamo(xdata=Xdata,zdata=ydata,
+                            xmin=lowBound,xmax=upBound,monomialpower=(1,2))
 #     print("===============================================================")
 #     print("ALAMO results")
 #     print("===============================================================")
@@ -239,16 +246,28 @@ def coordinateSearch(filename,cycles,sample_method,sample_ini):
                         box.numOfSample[i] = int(box.numOfSample[i]*0.5)
                     else:
                         box.numOfSample[i] = 3
+
+                    if box.totalCall > 5000:
+                        print('Search interupted: too much evaluations')
+                        return box
                     break
                 else:
                     box.numOfSample[i] += 4
                     box.radius[i] *= 0.8
 
-                    if preventInifinite > 10:
+                    if box.totalCall > 5000:
+                        print('Search interupted: too much evaluations')
+                        return box
+
+                    if preventInifinite > 20:
                         break
 
         # Finish condition
-        if len(box.optimalValues)>1 and box.optimalValues[-2]-box.optimalValues[-1]<1e-4:
+        if len(box.optimalValues)>1 and box.optimalValues[-2]-box.optimalValues[-1]<1e-3:
+            print('Search finished: exit normally')
+            return box
+        if box.totalCall > 5000:
+            print('Search interupted: too much evaluations')
             return box
 
     return box
@@ -283,7 +302,8 @@ def makeCSV(box,sample_method):
 
 def main():
     box = coordinateSearch(filename,cycles,sample_method,sample_ini)
-    # makePlot(box,sample_method)
+    makePlot(box,sample_method)
+    makeCSV(box,sample_method)
     return
 
 if __name__ == "__main__":
