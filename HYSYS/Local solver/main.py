@@ -11,7 +11,8 @@ hysolver = hyCase.Solver
 
 LB=np.array([0.3000,0.7500,1.8750,4.6750,0.8590,2.5970,2.5410,3.9110])
 UB=np.array([5.7000,14.2500,35.6250,88.8250,16.3210,49.3430,48.2790,74.3090])
-x0 = (LB+UB)/2
+# x0 = (LB+UB)/2
+x0 = [5.1, 14.12, 21.4, 46.85, 8.59, 25.97, 25.41, 39.11]
 
 def hy_distinguish(hysolver):
 	i=4
@@ -102,7 +103,21 @@ def hy_Object(hyCase, hysolver, variable):
 		OBJ = np.random.random_sample()*10**30
 		return OBJ
 
+import csv
+def makeCSV(point,value):
+    csvfile = open('reportHYSYS.csv','a+',newline='')
+    fieldsname = ['point','value']
+    writer = csv.DictWriter(csvfile,fieldnames=fieldsname)
+
+    writer.writerow({
+        'point':point,
+        'value':value
+    })
+    csvfile.close()
+
 # test run for center point
 '''once you connect Aspen Hysys, just use hy_Object function for optimization'''
 f_x0 = hy_Object(hyCase, hysolver, x0)
+print('coordinate is:',x0)
 print('function output of x0 is: ',f_x0)
+makeCSV(x0,f_x0)

@@ -49,7 +49,7 @@ Helper functions
 
 def callAlamopy(Xdata,ydata,lowBound,upBound):
     # print(input_values)
-    alamo_result = alamopy.alamo(xdata=Xdata,zdata=ydata,xmin=lowBound,xmax=upBound,monomialpower=(2,3))
+    alamo_result = alamopy.alamo(xdata=Xdata,zdata=ydata,xmin=lowBound,xmax=upBound,monomialpower=(1,2))
 #     print("===============================================================")
 #     print("ALAMO results")
 #     print("===============================================================")
@@ -214,7 +214,7 @@ def HYSYS(cycles,sample_method,sample_ini):
 
     #Initialization
     box.numOfSample = [sample_ini] * box.numOfVar
-    box.radius = [2] * box.numOfVar
+    box.radius = [1] * box.numOfVar
 
     for cycle in range(box.cycles):
         print('The No.',cycle+1,'cycle...')
@@ -222,141 +222,142 @@ def HYSYS(cycles,sample_method,sample_ini):
         for i in range(box.numOfVar):
             print('The No.',i+1,'variable...')
 
-            # used to store available data points
-            tempXdata = []
-            tempydata = []
-
             while(True):
-                '''
-                Search from the starting point, left to right
-                '''
-                if type(box.radius) == int:
-                    r = box.radius
-                elif type(box.radius) == list:
-                    r = box.radius[i]
+                # used to store available data points
+                tempXdata = []
+                tempydata = []
 
-                # search to both directions
-                if box.direction[i] == 'both':
-                    if box.actualLocation[i] - r < box.lowBound[i]:
-                        lb = box.lowBound[i]
+                while(True):
+                    '''
+                    Search from the starting point, left to right
+                    '''
+                    if type(box.radius) == int:
+                        r = box.radius
+                    elif type(box.radius) == list:
+                        r = box.radius[i]
+
+                    # search to both directions
+                    if box.direction[i] == 'both':
+                        if box.actualLocation[i] - r < box.lowBound[i]:
+                            lb = box.lowBound[i]
+                        else:
+                            lb = box.actualLocation[i] - r
+                        
+                        if box.actualLocation[i] + r > box.upBound[i]:
+                            ub = box.upBound[i]
+                        else:
+                            ub = box.actualLocation[i] + r
+                    # search to only left direction
+                    elif box.direction[i] == 'left':
+                        if box.actualLocation[i] - r < box.lowBound[i]:
+                            lb = box.lowBound[i]
+                        else:
+                            lb = box.actualLocation[i] - r
+                        ub = box.actualLocation[i]
+                    elif box.direction[i] == 'right':
+                        if box.actualLocation[i] + r > box.upBound[i]:
+                            ub = box.upBound[i]
+                        else:
+                            ub = box.actualLocation[i] + r
+                        lb = box.actualLocation[i]
+
                     else:
-                        lb = box.actualLocation[i] - r
+                        raise Exception("Invalid direction token")
+
+                    # Sampling along the single direction within [lb,ub]
+                    if(sample_method=="halton"):
+                        Xdata,_ = halton_sequence(lb,ub,box.numOfSample[i])
+                    elif(sample_method=="hammersley"):
+                        Xdata,_ = hammersley_sequence(lb,ub,box.numOfSample[i])
+                    elif(sample_method=="vander"):
+                        Xdata,_=van_der_corput(lb,ub,box.numOfSample[i],2)
+                    elif(sample_method=="latin"):
+                        Xdata,_ = latin_random_sequence(lb,ub,box.numOfSample[i],1,1)
+                    elif(sample_method=="sobol"):
+                        Xdata = sobol_sequence(lb,ub,1,box.numOfSample[i])
+
+                    box.totalCall += box.numOfSample[i]
+
+                    ydata = []
+                    ydata_flag = []
+                    for val in Xdata:
+                        location = box.actualLocation[:]
+                        location[i] = val
+                        obj,flag = hy_Object(hyCase, hysolver, location)
+                        ydata.append(obj)
+                        ydata_flag.append(flag)
+
+                    # reset the search direction
+                    if len(ydata_flag) %2 == 0:
+                        left_count = Counter(ydata_flag[:int(len(ydata_flag)/2)])[True]
+                        right_count = Counter(ydata_flag[int(len(ydata_flag)/2):])[True]
+                        if left_count > right_count:
+                            box.direction[i] = 'left'
+                        elif left_count < right_count:
+                            box.direction[i] = 'right'
+                        else:
+                            pass
+                    else:
+                        left_count = Counter(flag[:int(len(flag)/2)])[True]
+                        right_count = Counter(flag[int(len(flag)/2)+1:])[True]
+                        if left_count > right_count:
+                            box.direction[i] = 'left'
+                        elif left_count < right_count:
+                            box.direction[i] = 'right'
+                        else:
+                            pass
                     
-                    if box.actualLocation[i] + r > box.upBound[i]:
-                        ub = box.upBound[i]
-                    else:
-                        ub = box.actualLocation[i] + r
-                # search to only left direction
-                elif box.direction[i] == 'left':
-                    if box.actualLocation[i] - r < box.lowBound[i]:
-                        lb = box.lowBound[i]
-                    else:
-                        lb = box.actualLocation[i] - r
-                    ub = box.actualLocation[i]
-                elif box.direction[i] == 'right':
-                    if box.actualLocation[i] + r > box.upBound[i]:
-                        ub = box.upBound[i]
-                    else:
-                        ub = box.actualLocation[i] + r
-                    lb = box.actualLocation[i]
+                    # add to temp Xdata
+                    for f in range(len(ydata_flag)):
+                        if ydata_flag[f] == True and ydata[f] < 1e4:
+                            tempXdata.append(Xdata[f])
+                            tempydata.append(ydata[f])
+                        else:
+                            box.totalCall -= 1
 
-                else:
-                    raise Exception("Invalid direction token")
-
-                # Sampling along the single direction within [lb,ub]
-                if(sample_method=="vander"):
-                    Xdata,_ = halton_sequence(lb,ub,box.numOfSample[i])
-                elif(sample_method=="hammersley"):
-                    Xdata,_ = hammersley_sequence(lb,ub,box.numOfSample[i])
-                elif(sample_method=="halton"):
-                    Xdata,_=van_der_corput(lb,ub,box.numOfSample[i],2)
-                elif(sample_method=="latin"):
-                    Xdata,_ = latin_random_sequence(lb,ub,box.numOfSample[i],1,1)
-                elif(sample_method=="sobol"):
-                    Xdata = sobol_sequence(lb,ub,1,box.numOfSample[i])
-
-                box.totalCall += box.numOfSample[i]
-
-                ydata = []
-                ydata_flag = []
-                for val in Xdata:
-                    location = box.actualLocation[:]
-                    location[i] = val
-                    obj,flag = hy_Object(hyCase, hysolver, location)
-                    ydata.append(obj)
-                    ydata_flag.append(flag)
-
-                # reset the search direction
-                if len(ydata_flag) %2 == 0:
-                    left_count = Counter(ydata_flag[:int(len(ydata_flag)/2)])[True]
-                    right_count = Counter(ydata_flag[int(len(ydata_flag)/2):])[True]
-                    if left_count > right_count:
-                        box.direction[i] = 'left'
-                    elif left_count < right_count:
-                        box.direction[i] = 'right'
-                    else:
-                        pass
-                else:
-                    left_count = Counter(flag[:int(len(flag)/2)])[True]
-                    right_count = Counter(flag[int(len(flag)/2)+1:])[True]
-                    if left_count > right_count:
-                        box.direction[i] = 'left'
-                    elif left_count < right_count:
-                        box.direction[i] = 'right'
-                    else:
-                        pass
+                    # Exit condition
+                    if len(tempXdata) >= box.numOfSample[i]:
+                        break
                 
-                # add to temp Xdata
-                for f in range(len(ydata_flag)):
-                    if ydata_flag[f] == True:
-                        tempXdata.append(Xdata[f])
-                        tempydata.append(ydata[f])
-                    else:
-                        box.totalCall -= 1
+                # build surrograte model
+                labels,expr = callAlamopy(tempXdata,tempydata,lb,ub)
+                tempPoint,tempOptimal = callBaron(box,labels,expr,lb,ub,i)
+                print('Baron point:',tempPoint,'...')
+                print('Baron value:',tempOptimal,'...')
 
-                # Exit condition
-                if len(tempXdata) >= box.numOfSample[i]:
+                boxVal, flag= hy_Object(hyCase,hysolver,tempPoint)
+                if flag == True:
+                    print('Aspen return value:',boxVal,'...')
+                else:
+                    print('Aspen return value:',boxVal,'...')
+                    print('Predefined condition not satisfied')
+                    box.radius[i] *= 1.2
+                    box.numOfSample[i] += 4
+                    continue
+
+                if boxVal == 0:
+                    boxVal += 1e-5
+                ratio = tempOptimal / boxVal
+
+                if (ratio>0.5 and ratio<1.5):
+                    box.actualLocation = tempPoint
+                    if len(box.optimalValues)<1 or boxVal<box.optimalValues[-1]:
+                        box.optimalValues.append(boxVal)
+                        box.optimalPoints.append(tempPoint)
+                        box.calls.append(box.totalCall)
+                        print('================================================')
+                        print('Current optimal values:',box.optimalValues,'...')
+                    box.radius[i] *=2
                     break
-            
-            # build surrograte model
-            labels,expr = callAlamopy(tempXdata,tempydata,box.lowBound[i],box.upBound[i])
-            tempPoint,tempOptimal = callBaron(box,labels,expr,box.lowBound[i],box.upBound[i],i)
-            print('Baron point:',tempPoint,'...')
-            print('Baron value:',tempOptimal,'...')
-
-            boxVal, flag= hy_Object(hyCase,hysolver,tempPoint)
-            if flag == True:
-                print('Aspen return value:',boxVal,'...')
-            else:
-                print('Aspen return value:',boxVal,'...')
-                print('Predefined condition not satisfied')
-                box.radius[i] *= 1.2
-                box.numOfSample[i] += 4
-                continue
-
-
-            if boxVal == 0:
-                boxVal += 1e-5
-            ratio = tempOptimal / boxVal
-            if (ratio>0.5 and ratio<1.5):
-                box.actualLocation = tempPoint
-                if len(box.optimalValues)<1 or boxVal<box.optimalValues[-1]:
-                    box.optimalValues.append(boxVal)
-                    box.optimalPoints.append(tempPoint)
-                    box.calls.append(box.totalCall)
-                    print('================================================')
-                    print('Current optimal values:',box.optimalValues,'...')
-                box.radius[i] *=2
+                else:
+                    box.radius[i] *= 0.8
+                    box.numOfSample[i] += 4
                 
-            else:
-                box.radius[i] *= 1.2
-                box.numOfSample[i] += 4
-            
-            # Exit condition
-            if box.totalCall > 5000:
-                return
-            elif len(box.optimalValues)>1 and box.optimalValues[-2]-box.optimalValues[-1] < 1e-4:
-                return
+                # Exit condition
+                if box.totalCall > 5000:
+                    return
+                elif len(box.optimalValues)>1 and box.optimalValues[-2]-box.optimalValues[-1] < 1e-4:
+                    return
             
 '''
 ============================================================================

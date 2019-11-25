@@ -259,8 +259,8 @@ def coordinateSearch(filename,cycles,sample_method,sample_ini):
                         print('Search interupted: too much evaluations')
                         return box
 
-                    if preventInifinite > 20:
-                        break
+                    # if preventInifinite > 20:
+                    #     break
 
         # Finish condition
         if len(box.optimalValues)>1 and box.optimalValues[-2]-box.optimalValues[-1]<1e-3:
@@ -302,7 +302,7 @@ def makeCSV(box,sample_method):
 
 def main():
     box = coordinateSearch(filename,cycles,sample_method,sample_ini)
-    makePlot(box,sample_method)
+    # makePlot(box,sample_method)
     makeCSV(box,sample_method)
     return
 

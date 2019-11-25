@@ -2,7 +2,8 @@ import os
 import re
 
 ModelFile = open('selected.txt','r')
-methods = ['halton','vander','hammersley','latin','sobol']
+# methods = ['halton','vander','hammersley','latin','sobol']
+methods = ['latin']
 
 for line in ModelFile.readlines():
     name = line.strip()

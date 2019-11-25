@@ -128,7 +128,7 @@ def latin_random_sequence(lowerBound,upperBound,i,dim,seed):
     ratio = (upperBound-lowerBound)/1.0
     xdata,_ = latin_random(dim,i,seed)
     seq = [num*ratio+lowerBound for num in xdata]
-    return seq[0],i
+    return list(seq[0]),i
 
 def latin_random ( dim_num, point_num, seed ):
     '''
